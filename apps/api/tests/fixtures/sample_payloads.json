@@ -1,0 +1,73 @@
+{
+  "story_variant_assignment": {
+    "variant": "return_to_joy",
+    "assignment_source": "ai_proposed",
+    "confidence": 0.87,
+    "evidence_quote": "And then I felt the joy flood back as he held my hand.",
+    "reasoning": "Story resolves from distress through relational connection back to full joy state."
+  },
+  "story_emotion": {
+    "emotion": "fear",
+    "energy_level": "high_energy",
+    "progression_stage": "initial",
+    "evidence_quote": "My heart was racing and I couldn't catch my breath.",
+    "source_page": 42,
+    "source_char_offset": 1240,
+    "sensations_identified": ["racing heart", "shortness of breath"],
+    "sensations_missing": false
+  },
+  "step_analysis": {
+    "setting": "Late afternoon in the hospital waiting room, surrounded by family members, hushed and tense.",
+    "trigger": "The doctor walked out and said 'I'm sorry, there's nothing more we can do.'",
+    "emotion_and_body_sensations": "Overwhelming fear and grief; my knees went weak and my vision blurred with tears.",
+    "point": "Even in the darkest valley, I was not alone — God's presence held me when I couldn't stand.",
+    "internal_thoughts": null,
+    "relational_presence": null
+  },
+  "candidate_story_boundary": {
+    "tentative_title": "The Day My World Stopped",
+    "first_sentence": "I remember the exact moment the doctor walked in.",
+    "last_sentence": "And somehow, impossibly, there was peace.",
+    "approx_char_start": 1180,
+    "approx_char_end": 3450,
+    "evidence_quote": "I remember the exact moment the doctor walked in."
+  },
+  "criterion_evaluation": {
+    "result": "met",
+    "confidence": 0.91,
+    "evidence_quote": "I was sitting in the waiting room when my name was called.",
+    "reasoning": "First-person past-tense autobiographical framing throughout. Speaker present at described event."
+  },
+  "hybrid_search_request": {
+    "query": "overcoming fear with God's help",
+    "filter_variant": "return_to_joy",
+    "filter_emotion": "fear",
+    "limit": 20,
+    "offset": 0
+  },
+  "review_action_request": {
+    "action": "approve",
+    "visibility": "public",
+    "notes": "Strong 4+ story with clear STEP and somatic detail.",
+    "editorial_overrides": {
+      "title": "The Day My World Stopped",
+      "primary_emotion": null
+    }
+  },
+  "document": {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "title": "Rare Leadership",
+    "author": "Marcus Warner & Jim Wilder",
+    "document_type": "pdf_book",
+    "source_file_path": "raw-documents/rare-leadership.pdf",
+    "file_hash_sha256": "a3f1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+    "page_count": 248,
+    "rights_status": "licensed",
+    "publication_restrictions": null,
+    "metadata": {"isbn": "978-0802414908", "year": 2016},
+    "created_by": null,
+    "created_at": "2026-01-15T09:00:00Z",
+    "updated_at": "2026-01-15T09:00:00Z"
+  }
+}
+

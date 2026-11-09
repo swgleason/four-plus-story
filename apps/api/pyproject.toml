@@ -1,0 +1,44 @@
+[project]
+name = "four-plus-api"
+version = "0.1.0"
+description = "FastAPI backend for Four Plus Story discovery, analysis, search, and ingestion"
+authors = [{ name = "Four Plus Story Team" }]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.8",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic>=2.10.6",
+    "pydantic-settings>=2.8.0",
+    "supabase>=2.13.0",
+    "pymupdf>=1.25.3",
+    "httpx>=0.28.1",
+    "numpy>=2.2.3",
+    "python-multipart>=0.0.20",
+    "anthropic>=0.48.0",
+    "openai>=1.60.0",
+    "google-genai>=1.0.0",
+    "tiktoken>=0.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3",
+    "mypy>=1.15.0",
+    "ruff>=0.9.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+explicit_package_bases = true
+mypy_path = "."
