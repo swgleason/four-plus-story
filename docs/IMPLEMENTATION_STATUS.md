@@ -47,7 +47,7 @@ Phase 7: Hardening & Launch    [                    ]   0% PENDING
   - [x] SQL migration for all 21 core tables (documents → stories → analysis → collections → profiles).
   - [x] `ON DELETE RESTRICT` cascade protection for `document_pages` and `documents`.
   - [x] 26 hardened RLS policies (approval + visibility + rights clearance gate) with `SET search_path = public, auth`.
-  - [x] `hybrid_story_search` PostgreSQL function with RRF scoring and `auth.is_curator_or_admin()` helper.
+  - [x] `hybrid_story_search` PostgreSQL function with RRF scoring and `public.is_curator_or_admin()` helper.
 - [x] **Task 1.2: Dual-Stack Validation & Schema Synchronization** ✅ COMPLETE (pending review)
   - [x] Locked Zod schemas in `packages/shared-types/src/index.ts` (499 lines, 12 enums, all entity models).
   - [x] Modular Pydantic v2 schemas in `apps/api/app/schemas/` (11 files, 65 classes/enums).

@@ -18,6 +18,12 @@ The invite acceptance route validates the token, invited email, role, and expiry
 against `admin_invitations`. Invitations only create curator or super-admin
 profiles. The Supabase service-role key must be configured for this endpoint.
 
+For passwordless sign-in, add each admin origin's `/auth/callback` URL to
+Supabase Auth's allowed Redirect URLs (for example
+`http://localhost:3000/auth/callback` and the deployed admin URL). The callback
+exchanges PKCE `code` values and also accepts Supabase `token_hash` email links,
+then verifies the resulting user's curator profile before redirecting.
+
 ## Development
 
 Run the app from this directory with `pnpm dev`. The curator app expects the

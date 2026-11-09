@@ -512,7 +512,7 @@ FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 -- 5. Helper Functions & Stored Procedures (with Security Controls)
 
 -- Helper function: Check if current user has an administrative or curator role
-CREATE OR REPLACE FUNCTION auth.is_curator_or_admin()
+CREATE OR REPLACE FUNCTION public.is_curator_or_admin()
 RETURNS BOOLEAN 
 LANGUAGE plpgsql 
 SECURITY DEFINER
@@ -527,8 +527,8 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION auth.is_curator_or_admin() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION auth.is_curator_or_admin() TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.is_curator_or_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_curator_or_admin() TO authenticated;
 
 -- Hybrid Search Stored Procedure combining dense vector search and sparse full-text search via RRF
 -- Strictly enforces: approval + visibility + document rights clearance
@@ -572,7 +572,7 @@ BEGIN
               (auth.uid() IS NOT NULL AND s.visibility IN ('public', 'registered_users'))
               OR
               -- Curator / admin access
-              auth.is_curator_or_admin()
+              public.is_curator_or_admin()
           )
           AND (filter_variant IS NULL OR EXISTS (
               SELECT 1 FROM public.story_variant_assignments sva
@@ -652,7 +652,7 @@ ALTER TABLE user_bookmarks ENABLE ROW LEVEL SECURITY;
 -- 6.1. user_profiles Policies
 CREATE POLICY "Users can read own profile"
 ON user_profiles FOR SELECT
-USING (auth.uid() = id OR auth.is_curator_or_admin());
+USING (auth.uid() = id OR public.is_curator_or_admin());
 
 CREATE POLICY "Users can update own profile"
 ON user_profiles FOR UPDATE
@@ -661,23 +661,23 @@ USING (auth.uid() = id);
 -- 6.2. documents & document_pages Policies
 CREATE POLICY "Curators manage documents"
 ON documents FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators manage document pages"
 ON document_pages FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators manage document chunks"
 ON document_chunks FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators manage processing jobs"
 ON processing_jobs FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators manage processing job events"
 ON processing_job_events FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- 6.3. stories Policies
 -- Public access: Requires approved + public visibility + rights clearance
@@ -706,7 +706,7 @@ USING (
 -- Curators & admins have full management access
 CREATE POLICY "Curators full access on stories"
 ON stories FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- 6.4. story_source_spans Policies
 CREATE POLICY "Public read spans of approved stories"
@@ -720,12 +720,12 @@ USING (
         AND s.visibility = 'public'
         AND d.rights_status IN ('public_domain', 'licensed', 'fair_use_educational')
         AND d.publication_restrictions IS NULL
-    ) OR auth.is_curator_or_admin()
+    ) OR public.is_curator_or_admin()
 );
 
 CREATE POLICY "Curators manage story source spans"
 ON story_source_spans FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- 6.5. story_curated_versions Policies
 CREATE POLICY "Public read approved curated versions"
@@ -742,7 +742,7 @@ USING (
 
 CREATE POLICY "Curators manage curated versions"
 ON story_curated_versions FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- 6.6. Analysis Dimensions (STEP, Variants, Emotions, AI Evaluations)
 CREATE POLICY "Public read approved STEP analyses"
@@ -753,12 +753,12 @@ USING (
         WHERE s.id = story_step_analyses.story_id
         AND s.status = 'approved'
         AND s.visibility = 'public'
-    ) OR auth.is_curator_or_admin()
+    ) OR public.is_curator_or_admin()
 );
 
 CREATE POLICY "Curators manage STEP analyses"
 ON story_step_analyses FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Public read approved variant assignments"
 ON story_variant_assignments FOR SELECT
@@ -768,12 +768,12 @@ USING (
         WHERE s.id = story_variant_assignments.story_id
         AND s.status = 'approved'
         AND s.visibility = 'public'
-    ) OR auth.is_curator_or_admin()
+    ) OR public.is_curator_or_admin()
 );
 
 CREATE POLICY "Curators manage variant assignments"
 ON story_variant_assignments FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Public read approved emotions"
 ON story_emotions FOR SELECT
@@ -783,30 +783,30 @@ USING (
         WHERE s.id = story_emotions.story_id
         AND s.status = 'approved'
         AND s.visibility = 'public'
-    ) OR auth.is_curator_or_admin()
+    ) OR public.is_curator_or_admin()
 );
 
 CREATE POLICY "Curators manage emotions"
 ON story_emotions FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- AI evaluations are strictly internal to curators/admins
 CREATE POLICY "Curators access AI evaluations"
 ON story_ai_evaluations FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators manage embeddings"
 ON story_embeddings FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- 6.7. story_human_reviews (Immutable audit log)
 CREATE POLICY "Curators view audit reviews"
 ON story_human_reviews FOR SELECT
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators create audit review entries"
 ON story_human_reviews FOR INSERT
-WITH CHECK (auth.is_curator_or_admin());
+WITH CHECK (public.is_curator_or_admin());
 
 -- 6.8. User Bookmarks Policies
 CREATE POLICY "Users manage own bookmarks"
@@ -824,4 +824,3 @@ USING (
         AND role = 'super_admin'
     )
 );
-

@@ -23,5 +23,5 @@ ALTER TABLE story_boundary_candidates ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Curators manage story boundary candidates"
 ON story_boundary_candidates FOR ALL
-USING (auth.is_curator_or_admin())
-WITH CHECK (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin())
+WITH CHECK (public.is_curator_or_admin());

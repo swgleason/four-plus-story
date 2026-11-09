@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+    return redirectWithCookies(response, loginUrl);
   }
   if (user && request.nextUrl.pathname === "/login") {
     const { data: profile } = await supabase
@@ -45,10 +45,18 @@ export async function middleware(request: NextRequest) {
       const dashboardUrl = request.nextUrl.clone();
       dashboardUrl.pathname = "/dashboard";
       dashboardUrl.search = "";
-      return NextResponse.redirect(dashboardUrl);
+      return redirectWithCookies(response, dashboardUrl);
     }
   }
   return response;
+}
+
+function redirectWithCookies(response: NextResponse, destination: URL) {
+  const redirectResponse = NextResponse.redirect(destination);
+  response.cookies.getAll().forEach(({ name, value, ...options }) => {
+    redirectResponse.cookies.set(name, value, options);
+  });
+  return redirectResponse;
 }
 
 export const config = {

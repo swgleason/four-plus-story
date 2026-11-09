@@ -168,7 +168,7 @@ BEGIN
               (auth.uid() IS NOT NULL AND s.visibility IN ('public', 'registered_users'))
               OR
               -- Curator / admin access
-              auth.is_curator_or_admin()
+              public.is_curator_or_admin()
           )
           AND (filter_variant IS NULL OR EXISTS (
               SELECT 1 FROM public.story_variant_assignments sva

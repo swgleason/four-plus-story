@@ -100,7 +100,7 @@ To protect authentic source materials from accidental data destruction:
 ## 4. Row-Level Security (RLS) & Function Hardening
 
 1. **Explicit Search Path Protection**:
-   - To defend against search-path poisoning attacks in PostgreSQL, every `SECURITY DEFINER` function (e.g. `auth.is_curator_or_admin()`, `public.hybrid_story_search()`) explicitly defines:
+   - To defend against search-path poisoning attacks in PostgreSQL, every `SECURITY DEFINER` function (e.g. `public.is_curator_or_admin()`, `public.hybrid_story_search()`) explicitly defines:
      ```sql
      SET search_path = public, auth
      ```

@@ -535,7 +535,7 @@ CREATE INDEX idx_user_bookmarks_user ON user_bookmarks(user_id);
 ```sql
 -- Helper function: Check if current user is an admin or curator
 -- Hardened with explicit search_path
-CREATE OR REPLACE FUNCTION auth.is_curator_or_admin()
+CREATE OR REPLACE FUNCTION public.is_curator_or_admin()
 RETURNS BOOLEAN 
 LANGUAGE plpgsql 
 SECURITY DEFINER
@@ -550,8 +550,8 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION auth.is_curator_or_admin() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION auth.is_curator_or_admin() TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.is_curator_or_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_curator_or_admin() TO authenticated;
 
 -- The hardened hybrid_story_search implementation is maintained in
 -- apps/api/migrations/00004_hardened_hybrid_search.sql. It is SECURITY DEFINER,
@@ -615,12 +615,12 @@ USING (
 
 CREATE POLICY "Curators full access on stories"
 ON stories FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators manage story boundary candidates"
 ON story_boundary_candidates FOR ALL
-USING (auth.is_curator_or_admin())
-WITH CHECK (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin())
+WITH CHECK (public.is_curator_or_admin());
 
 -- 2. Curated Versions Policies:
 CREATE POLICY "Public read approved curated versions"
@@ -637,16 +637,16 @@ USING (
 
 CREATE POLICY "Curators manage curated versions"
 ON story_curated_versions FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- 3. Document & Source Protection Policies:
 CREATE POLICY "Curators manage documents"
 ON documents FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 CREATE POLICY "Curators manage document pages"
 ON document_pages FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 
 -- 4. Analysis Dimensions (STEP, Variants, Emotions):
 CREATE POLICY "Public read approved STEP analyses"
@@ -657,7 +657,7 @@ USING (
         WHERE s.id = story_step_analyses.story_id
         AND s.status = 'approved'
         AND s.visibility = 'public'
-    ) OR auth.is_curator_or_admin()
+    ) OR public.is_curator_or_admin()
 );
 
 CREATE POLICY "Public read approved variant assignments"
@@ -668,7 +668,7 @@ USING (
         WHERE s.id = story_variant_assignments.story_id
         AND s.status = 'approved'
         AND s.visibility = 'public'
-    ) OR auth.is_curator_or_admin()
+    ) OR public.is_curator_or_admin()
 );
 
 CREATE POLICY "Public read approved emotions"
@@ -679,11 +679,11 @@ USING (
         WHERE s.id = story_emotions.story_id
         AND s.status = 'approved'
         AND s.visibility = 'public'
-    ) OR auth.is_curator_or_admin()
+    ) OR public.is_curator_or_admin()
 );
 
 -- AI evaluations are restricted strictly to curators and admins
 CREATE POLICY "Curators view AI evaluations"
 ON story_ai_evaluations FOR ALL
-USING (auth.is_curator_or_admin());
+USING (public.is_curator_or_admin());
 ```
