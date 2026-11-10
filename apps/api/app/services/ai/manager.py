@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import Any, Dict, Iterable, List, Optional, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from pydantic import BaseModel
 
@@ -112,6 +112,7 @@ class AIServiceManager:
         user_prompt: str,
         response_schema: type[BaseModel],
         config: Optional[AIRequestConfig] = None,
+        retry_callback: Callable[[int, AIProviderError], None] | None = None,
     ) -> AIResponse:
         last_error: Optional[Exception] = None
 
@@ -133,6 +134,8 @@ class AIServiceManager:
                     if isinstance(exc, AIProviderError) and not exc.retryable:
                         raise exc
                     if attempt < self.max_retries and self._is_retryable_error(exc):
+                        if isinstance(exc, AIProviderError) and retry_callback is not None:
+                            retry_callback(attempt + 1, exc)
                         await self._sleep_for_backoff(attempt)
                         continue
                     break

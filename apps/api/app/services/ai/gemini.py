@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
-from typing import Any, Optional, Type
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -110,12 +111,40 @@ class GeminiProvider(BaseAIProvider):
         )
 
     def _classify_error(self, exc: Exception) -> AIProviderError:
-        status_code = getattr(exc, "status_code", None)
-        retryable = status_code in (408, 429, 500, 502, 503, 504)
+        response = getattr(exc, "response", None)
+        status_code = (
+            getattr(exc, "status_code", None)
+            or getattr(exc, "code", None)
+            or getattr(exc, "status", None)
+            or getattr(response, "status_code", None)
+        )
+        try:
+            numeric_status = int(str(status_code))
+        except (TypeError, ValueError):
+            numeric_status = None
+        error_text = f"{type(exc).__name__} {exc}".lower()
+        transient_text = any(
+            marker in error_text
+            for marker in (
+                "timeout",
+                "timed out",
+                "connection",
+                "connecterror",
+                "network",
+                "service unavailable",
+                "resource_exhausted",
+                "unavailable",
+            )
+        )
+        retryable = (
+            numeric_status in (408, 429, 500, 502, 503, 504)
+            or isinstance(exc, (TimeoutError, ConnectionError))
+            or transient_text
+        )
         return AIProviderError(
             message=str(exc),
             provider=self.provider_name,
-            status_code=status_code,
+            status_code=numeric_status,
             retryable=retryable,
         )
 
@@ -132,15 +161,18 @@ class GeminiProvider(BaseAIProvider):
             if hasattr(client, "aio") and hasattr(client.aio, "models"):
                 from google.genai import types
 
-                result = await client.aio.models.generate_content(
-                    model=cfg.model_name,
-                    contents=user_prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        temperature=cfg.temperature,
-                        max_output_tokens=cfg.max_tokens,
-                        response_mime_type="application/json",
+                result = await asyncio.wait_for(
+                    client.aio.models.generate_content(
+                        model=cfg.model_name,
+                        contents=user_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_prompt,
+                            temperature=cfg.temperature,
+                            max_output_tokens=cfg.max_tokens,
+                            response_mime_type="application/json",
+                        ),
                     ),
+                    timeout=cfg.timeout_seconds,
                 )
                 content = getattr(result, "text", "") or ""
             else:
@@ -154,7 +186,10 @@ class GeminiProvider(BaseAIProvider):
                     system_instruction=system_prompt,
                     generation_config=generation_config,
                 )
-                result = await model.generate_content_async(user_prompt)
+                result = await asyncio.wait_for(
+                    model.generate_content_async(user_prompt),
+                    timeout=cfg.timeout_seconds,
+                )
                 content = getattr(result, "text", "") or ""
         except Exception as exc:
             raise self._classify_error(exc) from exc
@@ -181,16 +216,19 @@ class GeminiProvider(BaseAIProvider):
             if hasattr(client, "aio") and hasattr(client.aio, "models"):
                 from google.genai import types
 
-                result = await client.aio.models.generate_content(
-                    model=cfg.model_name,
-                    contents=user_prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        temperature=cfg.temperature,
-                        max_output_tokens=cfg.max_tokens,
-                        response_mime_type="application/json",
-                        response_schema=schema,
+                result = await asyncio.wait_for(
+                    client.aio.models.generate_content(
+                        model=cfg.model_name,
+                        contents=user_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_prompt,
+                            temperature=cfg.temperature,
+                            max_output_tokens=cfg.max_tokens,
+                            response_mime_type="application/json",
+                            response_schema=schema,
+                        ),
                     ),
+                    timeout=cfg.timeout_seconds,
                 )
                 content = getattr(result, "text", "") or ""
             else:
@@ -204,7 +242,14 @@ class GeminiProvider(BaseAIProvider):
                     system_instruction=system_prompt,
                     generation_config=generation_config,
                 )
-                result = await model.generate_content_async(user_prompt + "\n\nReturn valid JSON matching this schema: " + json.dumps(schema))
+                result = await asyncio.wait_for(
+                    model.generate_content_async(
+                        user_prompt
+                        + "\n\nReturn valid JSON matching this schema: "
+                        + json.dumps(schema)
+                    ),
+                    timeout=cfg.timeout_seconds,
+                )
                 content = getattr(result, "text", "") or ""
         except Exception as exc:
             raise self._classify_error(exc) from exc

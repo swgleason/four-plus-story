@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from types import SimpleNamespace
 from typing import Optional, Type
 
 import pytest
@@ -15,6 +17,7 @@ from app.services.ai.base import (
     AIUsageStats,
     BaseAIProvider,
 )
+from app.services.ai.gemini import GeminiProvider
 from app.services.ai.manager import AIServiceManager
 from app.services.ai.mock import MockAIProvider
 
@@ -101,6 +104,44 @@ async def test_manager_uses_primary_provider_without_fallback() -> None:
     )
     assert response.usage.provider_name == "mock"
     assert response.usage.model_name == "mock-v1"
+
+
+def test_gemini_classifies_transient_http_errors_and_timeouts() -> None:
+    provider = GeminiProvider(api_key="test-key")
+
+    class RateLimitError(Exception):
+        status_code = 429
+
+    unavailable = provider._classify_error(Exception("503 Service Unavailable"))
+    rate_limited = provider._classify_error(RateLimitError("too many requests"))
+    timeout = provider._classify_error(TimeoutError())
+    connection = provider._classify_error(ConnectionError("connection reset"))
+
+    assert unavailable.retryable is True
+    assert rate_limited.retryable is True
+    assert rate_limited.status_code == 429
+    assert timeout.retryable is True
+    assert connection.retryable is True
+
+
+@pytest.mark.asyncio
+async def test_gemini_structured_request_enforces_configured_timeout() -> None:
+    class HangingModels:
+        async def generate_content(self, **_kwargs: object) -> None:
+            await asyncio.Event().wait()
+
+    provider = GeminiProvider(api_key="test-key", model="test-model")
+    provider._client = SimpleNamespace(aio=SimpleNamespace(models=HangingModels()))
+
+    with pytest.raises(AIProviderError) as error:
+        await provider.complete_structured(
+            system_prompt="test",
+            user_prompt="story",
+            response_schema=StoryBoundaryExtractionResponse,
+            config=AIRequestConfig(timeout_seconds=0.01),
+        )
+
+    assert error.value.retryable is True
 
 
 @pytest.mark.asyncio

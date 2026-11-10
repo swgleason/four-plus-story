@@ -17,7 +17,7 @@ from app.schemas.ai import (
 from app.schemas.document import DocumentChunkInDB, DocumentPageInDB
 from app.schemas.enums import JobStatus, NarratorGender, StoryStatus, StoryVisibility
 from app.schemas.story import StoryInDB
-from app.services.ai.base import AIRequestConfig, AIResponse
+from app.services.ai.base import AIProviderError, AIRequestConfig, AIResponse
 from app.services.ai.manager import AIServiceManager
 from app.services.ai_pipeline.prompts import BOUNDARY_SYSTEM_PROMPT
 from app.services.ai_pipeline.reconciler import BoundaryReconciler, VerifiedStoryBoundary
@@ -73,11 +73,27 @@ class StoryBoundaryScanner:
             candidates_rejected = 0
 
             for chunk in chunks:
+                def log_retry(
+                    retry_number: int,
+                    error: AIProviderError,
+                    chunk_index: int = chunk.chunk_index,
+                ) -> None:
+                    logger.warning(
+                        "Transient AI provider error scanning chunk %d; retry %d/%d "
+                        "(provider=%s, status=%s).",
+                        chunk_index,
+                        retry_number,
+                        self.ai_manager.max_retries,
+                        error.provider,
+                        error.status_code,
+                    )
+
                 response = await self.ai_manager.complete_structured(
                     system_prompt=BOUNDARY_SYSTEM_PROMPT,
                     user_prompt=chunk.text,
                     response_schema=StoryBoundaryExtractionResponse,
                     config=self.request_config,
+                    retry_callback=log_retry,
                 )
                 extraction = StoryBoundaryExtractionResponse.model_validate_json(
                     self._response_content(response)
@@ -138,7 +154,7 @@ class StoryBoundaryScanner:
                 await self._update_job(
                     job_id,
                     status=JobStatus.FAILED.value,
-                    error_message=f"Story discovery failed: {type(exc).__name__}",
+                    error_message=f"Story discovery failed: {type(exc).__name__}: {exc}",
                 )
                 await self._log_event(
                     job_id,

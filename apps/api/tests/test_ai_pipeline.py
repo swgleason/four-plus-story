@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -17,7 +18,7 @@ from app.schemas.ai import (
     StoryEvaluationResponse,
 )
 from app.schemas.document import DocumentChunkInDB, DocumentPageInDB
-from app.services.ai.base import AIRequestConfig
+from app.services.ai.base import AIProviderError, AIRequestConfig
 from app.services.ai.manager import AIServiceManager
 from app.services.ai.mock import MockAIProvider
 from app.services.ai_pipeline.reconciler import BoundaryReconciler
@@ -266,6 +267,84 @@ async def test_scanner_completes_when_mock_finds_no_candidates() -> None:
     assert result.candidates_created == 0
     assert client.tables.get("stories", []) == []
     assert client.tables["processing_jobs"][0]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_scanner_logs_chunk_retry_and_succeeds(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    client, document_id, job_id = source_fixture(make_scan_source())
+    provider = MockAIProvider()
+    original_complete_structured = provider.complete_structured
+    attempts = 0
+
+    async def flaky_complete_structured(*args: Any, **kwargs: Any) -> Any:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise AIProviderError(
+                "Gemini service unavailable",
+                provider="gemini",
+                status_code=503,
+                retryable=True,
+            )
+        return await original_complete_structured(*args, **kwargs)
+
+    monkeypatch.setattr(provider, "complete_structured", flaky_complete_structured)
+    manager = AIServiceManager(
+        primary_provider="mock",
+        fallback_providers=[],
+        providers={"mock": provider},
+    )
+    monkeypatch.setattr(manager, "_sleep_for_backoff", lambda _attempt: asyncio.sleep(0))
+
+    result = await StoryBoundaryScanner(
+        client,
+        manager,
+        request_config=AIRequestConfig(extra={"scenario": "success"}),
+    ).scan_document(document_id, job_id)
+
+    assert result.chunks_scanned == 1
+    assert attempts == 3
+    assert "chunk 0; retry 1/" in caplog.text
+    assert "chunk 0; retry 2/" in caplog.text
+    assert client.tables["processing_jobs"][0]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_scanner_persists_descriptive_error_after_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, document_id, job_id = source_fixture(make_scan_source())
+    provider = MockAIProvider()
+    attempts = 0
+
+    async def always_unavailable(*_args: Any, **_kwargs: Any) -> Any:
+        nonlocal attempts
+        attempts += 1
+        raise AIProviderError(
+            "Gemini returned 503 Service Unavailable",
+            provider="gemini",
+            status_code=503,
+            retryable=True,
+        )
+
+    monkeypatch.setattr(provider, "complete_structured", always_unavailable)
+    manager = AIServiceManager(
+        primary_provider="mock",
+        fallback_providers=[],
+        providers={"mock": provider},
+    )
+    monkeypatch.setattr(manager, "_sleep_for_backoff", lambda _attempt: asyncio.sleep(0))
+    scanner = StoryBoundaryScanner(client, manager)
+
+    with pytest.raises(AIProviderError, match="503 Service Unavailable"):
+        await scanner.scan_document(document_id, job_id)
+
+    assert attempts == manager.max_retries + 1
+    job = client.tables["processing_jobs"][0]
+    assert job["status"] == "failed"
+    assert "503 Service Unavailable" in job["error_message"]
 
 
 @pytest.mark.asyncio
