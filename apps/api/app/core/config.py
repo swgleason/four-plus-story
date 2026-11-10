@@ -11,9 +11,9 @@ Usage:
 
 from __future__ import annotations
 
-import os
 from functools import lru_cache
-from typing import List, Literal, Optional
+from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -105,7 +105,7 @@ class Settings(BaseSettings):
         """Normalize whitespace in comma-separated list."""
         return ",".join(p.strip() for p in str(v).split(",") if p.strip())
 
-    def get_fallback_provider_list(self) -> List[str]:
+    def get_fallback_provider_list(self) -> list[str]:
         """Return ordered list of fallback provider names."""
         if not self.ai_fallback_providers:
             return []

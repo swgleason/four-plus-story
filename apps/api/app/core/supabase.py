@@ -16,16 +16,30 @@ from app.core.config import get_settings
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+def _is_unconfigured(value: str) -> bool:
+    normalized = value.strip().lower()
+    return (
+        not normalized
+        or normalized.startswith(("your_", "your-"))
+        or "placeholder" in normalized
+    )
+
+
 async def get_supabase_client(request: Request) -> Any:
     client = getattr(request.app.state, "supabase", None)
     if client is not None:
         return client
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_role_key:
+    if _is_unconfigured(settings.supabase_url) or _is_unconfigured(
+        settings.supabase_service_role_key
+    ):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Supabase service configuration is unavailable.",
+            detail=(
+                "Supabase service configuration is unavailable. Set SUPABASE_URL and "
+                "SUPABASE_SERVICE_ROLE_KEY to valid values for this project."
+            ),
         )
 
     client = await acreate_client(settings.supabase_url, settings.supabase_service_role_key)
