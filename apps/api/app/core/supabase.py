@@ -25,15 +25,38 @@ def _is_unconfigured(value: str) -> bool:
     )
 
 
+def supabase_is_configured() -> bool:
+    settings = get_settings()
+    return not (
+        _is_unconfigured(settings.supabase_url)
+        or _is_unconfigured(settings.supabase_service_role_key)
+    )
+
+
+async def ensure_storage_bucket(supabase: Any, bucket_name: str) -> None:
+    buckets = await supabase.storage.list_buckets()
+    if any(getattr(bucket, "id", None) == bucket_name for bucket in buckets):
+        return
+
+    try:
+        await supabase.storage.create_bucket(bucket_name, options={"public": False})
+    except Exception as exc:
+        if str(getattr(exc, "status", getattr(exc, "status_code", None))) != "409":
+            raise
+        # Another API instance may have created the bucket after list_buckets().
+        buckets = await supabase.storage.list_buckets()
+        if any(getattr(bucket, "id", None) == bucket_name for bucket in buckets):
+            return
+        raise
+
+
 async def get_supabase_client(request: Request) -> Any:
     client = getattr(request.app.state, "supabase", None)
     if client is not None:
         return client
 
     settings = get_settings()
-    if _is_unconfigured(settings.supabase_url) or _is_unconfigured(
-        settings.supabase_service_role_key
-    ):
+    if not supabase_is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(

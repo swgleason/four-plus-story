@@ -15,7 +15,11 @@ from app.routers.documents import get_ingestion_manager, router
 from app.schemas.document import DocumentPageBase
 from app.schemas.enums import DocumentType
 from app.services.ingest.chunker import SemanticChunker
-from app.services.ingest.manager import DuplicateDocumentError, IngestionManager
+from app.services.ingest.manager import (
+    DuplicateDocumentError,
+    IngestionManager,
+    MissingStorageBucketError,
+)
 from app.services.ingest.parser import DocumentParseError, DocumentParser
 
 
@@ -220,6 +224,8 @@ class FakeStorageBucket:
         self.storage = storage
 
     async def upload(self, path: str, content: bytes, _options: dict[str, Any]) -> None:
+        if self.storage.upload_error is not None:
+            raise self.storage.upload_error
         self.storage.files[path] = content
 
     async def remove(self, paths: list[str]) -> None:
@@ -230,6 +236,7 @@ class FakeStorageBucket:
 class FakeSupabaseStorage:
     def __init__(self) -> None:
         self.files: dict[str, bytes] = {}
+        self.upload_error: Exception | None = None
 
     def from_(self, _bucket_name: str) -> FakeStorageBucket:
         return FakeStorageBucket(self)
@@ -264,6 +271,25 @@ async def test_ingestion_manager_rejects_duplicate_sha256_before_storage() -> No
 
     assert error.value.document["id"] == "existing-document"
     assert client.storage_uploads == []
+
+
+@pytest.mark.asyncio
+async def test_ingestion_manager_reports_missing_storage_bucket() -> None:
+    class StorageApiErrorLike(Exception):
+        status = 404
+        message = "Bucket not found"
+
+    client = FakeSupabaseClient()
+    client.storage.upload_error = StorageApiErrorLike()
+    manager = IngestionManager(client)
+
+    with pytest.raises(MissingStorageBucketError, match="raw-documents"):
+        await manager.create_upload(
+            content=b"source bytes",
+            filename="story.txt",
+            title="A story",
+            document_type=DocumentType.TXT_TRANSCRIPT,
+        )
 
 
 @pytest.mark.asyncio
@@ -346,6 +372,31 @@ def test_upload_endpoint_queues_background_processing() -> None:
         "story.txt",
         DocumentType.TXT_TRANSCRIPT,
     )
+
+
+def test_upload_endpoint_returns_service_unavailable_for_missing_bucket() -> None:
+    class MissingBucketManager:
+        parser = DocumentParser()
+
+        async def create_upload(self, **_kwargs: Any) -> None:
+            raise MissingStorageBucketError(
+                "Supabase Storage bucket 'raw-documents' does not exist."
+            )
+
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+    app.dependency_overrides[get_ingestion_manager] = lambda: MissingBucketManager()
+    app.dependency_overrides[require_curator] = lambda: "curator-1"
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/documents/upload",
+            data={"title": "Transcript", "document_type": "txt_transcript"},
+            files={"file": ("story.txt", b"An autobiographical story.", "text/plain")},
+        )
+
+    assert response.status_code == 503
+    assert "raw-documents" in response.json()["detail"]
 
 
 def test_sha256_matches_standard_digest() -> None:

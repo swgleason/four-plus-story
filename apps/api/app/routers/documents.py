@@ -31,6 +31,7 @@ from app.schemas.enums import DocumentRightsStatus, DocumentType
 from app.services.ingest.manager import (
     DuplicateDocumentError,
     IngestionManager,
+    MissingStorageBucketError,
 )
 from app.services.ingest.parser import DocumentParseError
 
@@ -96,6 +97,11 @@ async def upload_document(
                 "message": str(exc),
                 "document_id": exc.document.get("id"),
             },
+        ) from exc
+    except MissingStorageBucketError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
         ) from exc
     except (DocumentParseError, ValueError) as exc:
         raise HTTPException(

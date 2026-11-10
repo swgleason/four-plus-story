@@ -22,8 +22,14 @@ The authenticated upload endpoint is `POST /api/v1/documents/upload`. It accepts
 PDF book/article or UTF-8 `.txt` transcript/story note and requires a Supabase
 access token for a curator or administrator. Original files are stored in the
 configured Supabase Storage bucket (`RAW_DOCUMENTS_BUCKET`, default
-`raw-documents`). SHA-256 deduplication runs before storage; duplicate uploads
-return HTTP 409 with the existing document ID.
+`raw-documents`). The API provisions a missing bucket as private during startup
+using the Supabase service-role client. The
+[`00007_raw_documents_storage_bucket.sql`](./migrations/00007_raw_documents_storage_bucket.sql)
+migration also provisions it for database bootstrap and deployment workflows.
+If the bucket is missing when an upload is attempted, the endpoint returns HTTP
+503 with instructions to create the private bucket or restart with valid service-role
+credentials. SHA-256 deduplication runs before storage; duplicate uploads return
+HTTP 409 with the existing document ID.
 
 Uploads create a `document_ingestion` processing job. FastAPI background processing
 extracts PDF pages with PyMuPDF (including page dimensions and text-block layout

@@ -30,6 +30,10 @@ class IngestionStorageError(RuntimeError):
     """Raised when required Supabase storage or database configuration is unavailable."""
 
 
+class MissingStorageBucketError(IngestionStorageError):
+    """Raised when the configured Supabase Storage bucket does not exist."""
+
+
 class IngestionManager:
     """Coordinate original-file storage, metadata persistence, and parsing jobs."""
 
@@ -90,11 +94,20 @@ class IngestionManager:
         storage_path = f"{document_id}/{safe_name}"
         content_type = "application/pdf" if safe_name.lower().endswith(".pdf") else "text/plain"
 
-        await self.supabase.storage.from_(self.bucket_name).upload(
-            storage_path,
-            content,
-            {"content-type": content_type, "upsert": False},
-        )
+        try:
+            await self.supabase.storage.from_(self.bucket_name).upload(
+                storage_path,
+                content,
+                {"content-type": content_type, "upsert": False},
+            )
+        except Exception as exc:
+            if self._is_missing_bucket_error(exc):
+                raise MissingStorageBucketError(
+                    f"Supabase Storage bucket '{self.bucket_name}' does not exist. "
+                    "Create it as a private bucket or restart the API with valid "
+                    "Supabase service-role credentials so startup can provision it."
+                ) from exc
+            raise
 
         document_payload = {
             "id": document_id,
@@ -352,3 +365,9 @@ class IngestionManager:
         if row is None:
             raise IngestionStorageError(message)
         return row
+
+    @staticmethod
+    def _is_missing_bucket_error(exc: Exception) -> bool:
+        status_code = getattr(exc, "status", getattr(exc, "status_code", None))
+        message = getattr(exc, "message", str(exc))
+        return str(status_code) == "404" and "bucket not found" in str(message).lower()
