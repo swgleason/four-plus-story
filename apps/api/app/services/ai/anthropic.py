@@ -2,8 +2,8 @@
 Anthropic Claude adapter for the provider-independent AI service layer.
 
 Implements BaseAIProvider using the official Anthropic Python SDK.
-Structured output is enforced via Anthropic's tool_use API (forced tool_choice),
-which is the most reliable way to get validated JSON from Claude models.
+Structured output uses Anthropic's tool_use API with automatic tool selection
+and strict input-schema validation.
 
 Required environment variables:
     ANTHROPIC_API_KEY   — Anthropic API key
@@ -30,12 +30,46 @@ from app.services.ai.base import (
     BaseAIProvider,
 )
 
+_UNSUPPORTED_SCHEMA_KEYWORDS = {
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minLength",
+    "maxLength",
+    "pattern",
+}
+_SCHEMA_MAP_KEYWORDS = {
+    "$defs",
+    "definitions",
+    "dependencies",
+    "dependentSchemas",
+    "patternProperties",
+    "properties",
+}
+_SCHEMA_LIST_KEYWORDS = {"allOf", "anyOf", "oneOf", "prefixItems"}
+_SCHEMA_SINGLE_KEYWORDS = {
+    "additionalItems",
+    "additionalProperties",
+    "contains",
+    "contentSchema",
+    "else",
+    "if",
+    "items",
+    "not",
+    "propertyNames",
+    "then",
+    "unevaluatedItems",
+    "unevaluatedProperties",
+}
+
 
 class AnthropicProvider(BaseAIProvider):
     """
     Anthropic Claude adapter.
 
-    Uses tool_use with forced single-tool selection to obtain structured JSON.
+    Uses tool_use with strict schema validation to obtain structured JSON.
     This avoids the unreliability of parsing JSON from prose responses.
     """
 
@@ -102,6 +136,44 @@ class AnthropicProvider(BaseAIProvider):
             cfg.timeout_seconds = settings.ai_timeout_seconds
         return cfg
 
+    def _sampling_parameters(self, config: AIRequestConfig) -> dict[str, Any]:
+        if config.temperature == 0.0:
+            return {}
+        return {"extra_body": {"temperature": config.temperature}}
+
+    @staticmethod
+    def _apply_strict_schema_constraints(schema: Any) -> Any:
+        if isinstance(schema, list):
+            for value in schema:
+                AnthropicProvider._apply_strict_schema_constraints(value)
+            return schema
+        if not isinstance(schema, dict):
+            return schema
+
+        for keyword in _UNSUPPORTED_SCHEMA_KEYWORDS:
+            schema.pop(keyword, None)
+
+        schema_type = schema.get("type")
+        if schema_type == "object" or (
+            isinstance(schema_type, list) and "object" in schema_type
+        ):
+            schema["additionalProperties"] = False
+
+        for keyword in _SCHEMA_MAP_KEYWORDS:
+            value = schema.get(keyword)
+            if isinstance(value, dict):
+                for nested_schema in value.values():
+                    AnthropicProvider._apply_strict_schema_constraints(nested_schema)
+        for keyword in _SCHEMA_LIST_KEYWORDS:
+            value = schema.get(keyword)
+            if isinstance(value, list):
+                AnthropicProvider._apply_strict_schema_constraints(value)
+        for keyword in _SCHEMA_SINGLE_KEYWORDS:
+            value = schema.get(keyword)
+            if isinstance(value, (dict, list)):
+                AnthropicProvider._apply_strict_schema_constraints(value)
+        return schema
+
     def _make_usage(
         self, raw_usage: Any, model_name: str, latency_ms: float
     ) -> AIUsageStats:
@@ -160,10 +232,10 @@ class AnthropicProvider(BaseAIProvider):
             message = await client.messages.create(
                 model=cfg.model_name,
                 max_tokens=cfg.max_tokens,
-                temperature=cfg.temperature,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
                 timeout=cfg.timeout_seconds,
+                **self._sampling_parameters(cfg),
             )
         except Exception as exc:
             raise self._classify_error(exc) from exc
@@ -184,10 +256,10 @@ class AnthropicProvider(BaseAIProvider):
         config: Optional[AIRequestConfig] = None,
     ) -> AIResponse:
         """
-        Use Anthropic tool_use with forced single-tool selection to obtain structured JSON.
+        Use Anthropic tool_use with strict schema validation to obtain structured JSON.
 
         The Pydantic model's JSON schema is passed as the tool input_schema.
-        Claude is forced to call the tool, ensuring structured JSON output.
+        The tool is available with automatic selection and strict input validation.
         """
         import anthropic
         import pydantic
@@ -196,13 +268,16 @@ class AnthropicProvider(BaseAIProvider):
         cfg = self._resolve_config(config)
 
         # Build tool definition from Pydantic schema
-        json_schema = response_schema.model_json_schema()
+        json_schema = self._apply_strict_schema_constraints(
+            response_schema.model_json_schema()
+        )
         tool_name = "structured_response"
         tools = [
             {
                 "name": tool_name,
                 "description": f"Return a valid {response_schema.__name__} JSON object.",
                 "input_schema": json_schema,
+                "strict": True,
             }
         ]
 
@@ -211,12 +286,12 @@ class AnthropicProvider(BaseAIProvider):
             message = await client.messages.create(
                 model=cfg.model_name,
                 max_tokens=cfg.max_tokens,
-                temperature=cfg.temperature,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
                 tools=tools,
-                tool_choice={"type": "tool", "name": tool_name},
+                tool_choice={"type": "auto"},
                 timeout=cfg.timeout_seconds,
+                **self._sampling_parameters(cfg),
             )
         except Exception as exc:
             raise self._classify_error(exc) from exc
@@ -257,4 +332,3 @@ class AnthropicProvider(BaseAIProvider):
     async def health_check(self) -> bool:
         """Verify API key is set and client is initialized."""
         return self._client is not None and bool(self._api_key)
-

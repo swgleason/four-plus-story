@@ -17,6 +17,7 @@ from app.services.ai.base import (
     AIUsageStats,
     BaseAIProvider,
 )
+from app.services.ai.anthropic import AnthropicProvider
 from app.services.ai.gemini import GeminiProvider
 from app.services.ai.manager import AIServiceManager
 from app.services.ai.mock import MockAIProvider
@@ -92,6 +93,77 @@ async def test_mock_invalid_response_rejected() -> None:
             response_schema=StoryEvaluationResponse,
             config=AIRequestConfig(extra={"scenario": "malformed"}),
         )
+
+
+def test_anthropic_strict_schema_disallows_additional_properties_on_all_objects() -> None:
+    schema = AnthropicProvider._apply_strict_schema_constraints(
+        StoryEvaluationResponse.model_json_schema()
+    )
+
+    def assert_no_additional_properties_for_objects(value: object) -> None:
+        if isinstance(value, dict):
+            if value.get("type") == "object":
+                assert value.get("additionalProperties") is False
+            for nested_value in value.values():
+                assert_no_additional_properties_for_objects(nested_value)
+        elif isinstance(value, list):
+            for nested_value in value:
+                assert_no_additional_properties_for_objects(nested_value)
+
+    assert_no_additional_properties_for_objects(schema)
+
+
+def test_anthropic_schema_cleaning_removes_unsupported_constraints_recursively() -> None:
+    schema = {
+        "type": "object",
+        "properties": {
+            "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10,
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 11,
+                "multipleOf": 1,
+            },
+            "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20,
+                "pattern": "^[a-z]+$",
+            },
+            "nested": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"minimum": {"type": "string", "pattern": ".*"}},
+                },
+            },
+        },
+        "$defs": {
+            "NestedDefinition": {
+                "type": "object",
+                "properties": {"value": {"type": "integer", "minimum": 0}},
+            }
+        },
+    }
+
+    cleaned = AnthropicProvider._apply_strict_schema_constraints(schema)
+
+    assert cleaned["additionalProperties"] is False
+    assert "minimum" not in cleaned["properties"]["count"]
+    assert "maximum" not in cleaned["properties"]["count"]
+    assert "exclusiveMinimum" not in cleaned["properties"]["count"]
+    assert "exclusiveMaximum" not in cleaned["properties"]["count"]
+    assert "multipleOf" not in cleaned["properties"]["count"]
+    assert "minLength" not in cleaned["properties"]["text"]
+    assert "maxLength" not in cleaned["properties"]["text"]
+    assert "pattern" not in cleaned["properties"]["text"]
+    nested_item = cleaned["properties"]["nested"]["items"]
+    assert nested_item["additionalProperties"] is False
+    assert "minimum" in nested_item["properties"]
+    assert "pattern" not in nested_item["properties"]["minimum"]
+    assert cleaned["$defs"]["NestedDefinition"]["additionalProperties"] is False
+    assert "minimum" not in cleaned["$defs"]["NestedDefinition"]["properties"]["value"]
 
 
 @pytest.mark.asyncio
