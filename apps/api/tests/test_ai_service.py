@@ -106,7 +106,7 @@ async def test_manager_uses_primary_provider_without_fallback() -> None:
     assert response.usage.model_name == "mock-v1"
 
 
-def test_gemini_classifies_transient_http_errors_and_timeouts() -> None:
+def test_gemini_classifies_rate_limits_as_non_retryable_and_transients_as_retryable() -> None:
     provider = GeminiProvider(api_key="test-key")
 
     class RateLimitError(Exception):
@@ -114,12 +114,14 @@ def test_gemini_classifies_transient_http_errors_and_timeouts() -> None:
 
     unavailable = provider._classify_error(Exception("503 Service Unavailable"))
     rate_limited = provider._classify_error(RateLimitError("too many requests"))
+    resource_exhausted = provider._classify_error(Exception("RESOURCE_EXHAUSTED"))
     timeout = provider._classify_error(TimeoutError())
     connection = provider._classify_error(ConnectionError("connection reset"))
 
     assert unavailable.retryable is True
-    assert rate_limited.retryable is True
+    assert rate_limited.retryable is False
     assert rate_limited.status_code == 429
+    assert resource_exhausted.retryable is False
     assert timeout.retryable is True
     assert connection.retryable is True
 

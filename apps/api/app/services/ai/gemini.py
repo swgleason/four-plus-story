@@ -132,12 +132,12 @@ class GeminiProvider(BaseAIProvider):
                 "connecterror",
                 "network",
                 "service unavailable",
-                "resource_exhausted",
                 "unavailable",
             )
         )
-        retryable = (
-            numeric_status in (408, 429, 500, 502, 503, 504)
+        rate_limited = numeric_status == 429 or "resource_exhausted" in error_text
+        retryable = not rate_limited and (
+            numeric_status in (408, 500, 502, 503, 504)
             or isinstance(exc, (TimeoutError, ConnectionError))
             or transient_text
         )
