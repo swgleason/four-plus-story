@@ -15,7 +15,7 @@ class SemanticChunker:
     def __init__(
         self,
         max_tokens: int = 800,
-        overlap_tokens: int = 100,
+        overlap_tokens: int = 300,
         encoding_name: str = "cl100k_base",
     ) -> None:
         if max_tokens < 1:

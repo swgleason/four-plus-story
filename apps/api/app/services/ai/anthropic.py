@@ -15,6 +15,7 @@ SDK documentation: https://docs.anthropic.com/en/api/messages
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import Any, Dict, Optional, Type
 
@@ -40,6 +41,16 @@ _UNSUPPORTED_SCHEMA_KEYWORDS = {
     "maxLength",
     "pattern",
 }
+_SCHEMA_METADATA_KEYWORDS = {
+    "$comment",
+    "default",
+    "deprecated",
+    "description",
+    "examples",
+    "readOnly",
+    "title",
+    "writeOnly",
+}
 _SCHEMA_MAP_KEYWORDS = {
     "$defs",
     "definitions",
@@ -63,6 +74,8 @@ _SCHEMA_SINGLE_KEYWORDS = {
     "unevaluatedItems",
     "unevaluatedProperties",
 }
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicProvider(BaseAIProvider):
@@ -150,7 +163,7 @@ class AnthropicProvider(BaseAIProvider):
         if not isinstance(schema, dict):
             return schema
 
-        for keyword in _UNSUPPORTED_SCHEMA_KEYWORDS:
+        for keyword in _UNSUPPORTED_SCHEMA_KEYWORDS | _SCHEMA_METADATA_KEYWORDS:
             schema.pop(keyword, None)
 
         schema_type = schema.get("type")
@@ -173,6 +186,67 @@ class AnthropicProvider(BaseAIProvider):
             if isinstance(value, (dict, list)):
                 AnthropicProvider._apply_strict_schema_constraints(value)
         return schema
+
+    @staticmethod
+    def _is_compiled_grammar_too_large_error(exc: Exception) -> bool:
+        return (
+            getattr(exc, "status_code", None) == 400
+            and "compiled grammar is too large" in str(exc).lower()
+        )
+
+    async def _complete_structured_json_fallback(
+        self,
+        client: Any,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: type[BaseModel],
+        config: AIRequestConfig,
+    ) -> AIResponse:
+        import pydantic
+
+        schema = self._apply_strict_schema_constraints(response_schema.model_json_schema())
+        fallback_system_prompt = (
+            f"{system_prompt}\n\n"
+            "Return exactly one valid JSON object matching this JSON Schema. "
+            "Do not include Markdown fences or explanatory text.\n"
+            f"JSON Schema:\n{json.dumps(schema, separators=(',', ':'))}"
+        )
+        started_at = time.monotonic()
+        try:
+            message = await client.messages.create(
+                model=config.model_name,
+                max_tokens=config.max_tokens,
+                system=fallback_system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+                timeout=config.timeout_seconds,
+                **self._sampling_parameters(config),
+            )
+        except Exception as exc:
+            raise self._classify_error(exc) from exc
+
+        content = "\n".join(
+            block.text
+            for block in message.content
+            if getattr(block, "type", None) == "text"
+        )
+        try:
+            validated = response_schema.model_validate_json(content)
+        except pydantic.ValidationError as exc:
+            raise AISchemaValidationError(
+                message=f"Anthropic JSON fallback failed schema validation: {exc}",
+                raw_content=content,
+                schema_name=response_schema.__name__,
+            ) from exc
+
+        return AIResponse(
+            content=validated.model_dump_json(),
+            usage=self._make_usage(
+                message.usage,
+                config.model_name,
+                (time.monotonic() - started_at) * 1000,
+            ),
+            raw_response=message,
+        )
 
     def _make_usage(
         self, raw_usage: Any, model_name: str, latency_ms: float
@@ -261,7 +335,6 @@ class AnthropicProvider(BaseAIProvider):
         The Pydantic model's JSON schema is passed as the tool input_schema.
         The tool is available with automatic selection and strict input validation.
         """
-        import anthropic
         import pydantic
 
         client = self._ensure_initialized()
@@ -294,6 +367,20 @@ class AnthropicProvider(BaseAIProvider):
                 **self._sampling_parameters(cfg),
             )
         except Exception as exc:
+            if self._is_compiled_grammar_too_large_error(exc):
+                logger.warning(
+                    "Anthropic tool grammar exceeded the model limit; retrying "
+                    "structured request with JSON prompt validation (model=%s, schema=%s).",
+                    cfg.model_name,
+                    response_schema.__name__,
+                )
+                return await self._complete_structured_json_fallback(
+                    client,
+                    system_prompt,
+                    user_prompt,
+                    response_schema,
+                    cfg,
+                )
             raise self._classify_error(exc) from exc
 
         latency_ms = (time.monotonic() - t0) * 1000

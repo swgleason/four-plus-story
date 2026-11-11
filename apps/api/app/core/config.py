@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     raw_documents_bucket: str = "raw-documents"
     max_document_upload_bytes: int = Field(default=25_000_000, ge=1_000, le=500_000_000)
     document_chunk_max_tokens: int = Field(default=800, ge=1, le=8192)
-    document_chunk_overlap_tokens: int = Field(default=100, ge=0, le=4096)
+    document_chunk_overlap_tokens: int = Field(default=300, ge=0, le=4096)
 
     # -------------------------------------------------------------------------
     # AI Provider Selection

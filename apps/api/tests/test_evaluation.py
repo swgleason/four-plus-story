@@ -130,6 +130,64 @@ class FakeSupabaseQuery:
         return SimpleNamespace(data=matching)
 
 
+@pytest.mark.parametrize(
+    ("quote", "source"),
+    [
+        ("She said, “I’m here.”", "She said, \"I'm here.\""),
+        ("I can't—do this alone!", "I can\\'t, do this alone."),
+        (
+            "My hands were\n  trembling and my chest felt tight.",
+            "My hands were trembling and my chest felt tight.",
+        ),
+    ],
+)
+def test_evaluator_accepts_formatting_variations_in_source_quotes(
+    quote: str,
+    source: str,
+) -> None:
+    StoryEvaluator._require_source_quote(quote, source)
+
+
+def test_evaluator_accepts_ordered_non_contiguous_evidence_tokens() -> None:
+    StoryEvaluator._require_source_quote(
+        "My hands trembled and I found peace.",
+        "My hands trembled. Much later, after asking for help, I found peace.",
+        required=True,
+    )
+
+
+def test_evaluator_allows_minor_evidence_omissions() -> None:
+    StoryEvaluator._require_source_quote(
+        "I remember standing beside my sister, then found peace.",
+        "I remember standing beside my sister and found peace.",
+        required=True,
+    )
+
+
+def test_evaluator_accepts_empty_optional_quote() -> None:
+    StoryEvaluator._require_source_quote("", SOURCE_TEXT)
+    StoryEvaluator._require_source_quote(" \n\t ", SOURCE_TEXT)
+
+
+def test_evaluator_rejects_empty_required_quote() -> None:
+    with pytest.raises(ValueError, match="not present verbatim"):
+        StoryEvaluator._require_source_quote("", SOURCE_TEXT, required=True)
+
+
+def test_evaluator_still_rejects_ungrounded_quote_after_normalization() -> None:
+    with pytest.raises(ValueError, match="not present verbatim"):
+        StoryEvaluator._require_source_quote("I was completely unafraid.", SOURCE_TEXT)
+
+
+def test_evaluator_rejects_evidence_with_words_in_wrong_order() -> None:
+    with pytest.raises(ValueError, match="not present verbatim"):
+        StoryEvaluator._require_source_quote(
+            "My hands trembled and my chest tightened.",
+            "My chest tightened while my hands trembled.",
+            required=True,
+        )
+
+
 class FakeSupabase:
     def __init__(self) -> None:
         self.tables: dict[str, list[dict[str, Any]]] = {}

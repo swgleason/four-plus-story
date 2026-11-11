@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 import re
+import unicodedata
+from difflib import SequenceMatcher
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -36,6 +38,61 @@ _ENERGY_BY_EMOTION: dict[EmotionType, EmotionEnergyLevel] = {
     EmotionType.JOY: EmotionEnergyLevel.POSITIVE_CONNECTIVE,
     EmotionType.GRATITUDE: EmotionEnergyLevel.POSITIVE_CONNECTIVE,
     EmotionType.PEACE: EmotionEnergyLevel.POSITIVE_CONNECTIVE,
+}
+_EVIDENCE_STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "been",
+    "being",
+    "but",
+    "by",
+    "for",
+    "from",
+    "had",
+    "has",
+    "have",
+    "he",
+    "her",
+    "hers",
+    "him",
+    "his",
+    "i",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "me",
+    "my",
+    "of",
+    "on",
+    "or",
+    "our",
+    "ours",
+    "she",
+    "that",
+    "the",
+    "their",
+    "theirs",
+    "them",
+    "they",
+    "this",
+    "those",
+    "to",
+    "us",
+    "was",
+    "we",
+    "were",
+    "with",
+    "you",
+    "your",
+    "yours",
 }
 
 
@@ -213,10 +270,63 @@ class StoryEvaluator:
         source_text: str,
         required: bool = False,
     ) -> None:
-        if (required and not quote) or (quote and quote not in source_text):
+        normalized_quote = StoryEvaluator._normalize_quote_for_comparison(quote)
+        if not normalized_quote:
+            if required:
+                raise ValueError(
+                    "AI returned evidence that is not present verbatim in the story source."
+                )
+            return
+
+        quote_tokens = StoryEvaluator._significant_evidence_tokens(normalized_quote)
+        source_tokens = StoryEvaluator._significant_evidence_tokens(source_text)
+        if not quote_tokens:
+            if required:
+                raise ValueError(
+                    "AI returned evidence that is not present verbatim in the story source."
+                )
+            return
+
+        matching_tokens = sum(
+            block.size
+            for block in SequenceMatcher(
+                None,
+                quote_tokens,
+                source_tokens,
+                autojunk=False,
+            ).get_matching_blocks()
+        )
+        if matching_tokens / len(quote_tokens) < 0.8:
             raise ValueError(
                 "AI returned evidence that is not present verbatim in the story source."
             )
+
+    @staticmethod
+    def _normalize_quote_for_comparison(text: str) -> str:
+        """Normalize formatting and punctuation while preserving ordered source words."""
+        normalized = unicodedata.normalize("NFKC", text).replace("\\'", "'")
+        normalized = normalized.translate(
+            str.maketrans(
+                {
+                    "\u2018": "'",
+                    "\u2019": "'",
+                    "\u201c": '"',
+                    "\u201d": '"',
+                    "\u02bc": "'",
+                    "\u0060": "'",
+                }
+            )
+        )
+        normalized = re.sub(r"\s+", " ", normalized).casefold().strip()
+        return " ".join(re.findall(r"[\w']+", normalized, flags=re.UNICODE))
+
+    @staticmethod
+    def _significant_evidence_tokens(text: str) -> list[str]:
+        return [
+            token
+            for token in re.findall(r"[\w']+", text.casefold(), flags=re.UNICODE)
+            if token not in _EVIDENCE_STOP_WORDS
+        ]
 
     async def _persist(
         self,

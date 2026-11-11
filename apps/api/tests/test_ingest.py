@@ -101,6 +101,10 @@ def test_chunker_tracks_exact_text_offsets_and_page_bounds() -> None:
     assert any(left.char_end > right.char_start for left, right in pairwise(chunks))
 
 
+def test_chunker_defaults_to_300_token_overlap() -> None:
+    assert SemanticChunker().overlap_tokens == 300
+
+
 def test_chunker_handles_unicode_without_invalid_offsets() -> None:
     page = DocumentPageBase(
         page_number=1,

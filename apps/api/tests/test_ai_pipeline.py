@@ -9,18 +9,21 @@ from uuid import uuid4
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pydantic import BaseModel
 
 from app.core.supabase import get_supabase_client, require_curator
 from app.routers.discovery import get_story_boundary_scanner, router
 from app.schemas.ai import (
     CandidateStoryBoundary,
     CandidateStorySegment,
+    StoryBoundaryExtractionResponse,
     StoryEvaluationResponse,
 )
-from app.schemas.document import DocumentChunkInDB, DocumentPageInDB
-from app.services.ai.base import AIProviderError, AIRequestConfig
+from app.schemas.document import DocumentChunkInDB, DocumentPageBase, DocumentPageInDB
+from app.services.ai.base import AIProviderError, AIRequestConfig, AIResponse, AIUsageStats
 from app.services.ai.manager import AIServiceManager
 from app.services.ai.mock import MockAIProvider
+from app.services.ingest.chunker import SemanticChunker
 from app.services.ai_pipeline.reconciler import BoundaryReconciler
 from app.services.ai_pipeline.scanner import StoryBoundaryScanner
 
@@ -387,6 +390,93 @@ def make_chunk(text: str, start: int = 0) -> DocumentChunkInDB:
         char_end=start + len(text),
         created_at=datetime.now(UTC),
     )
+
+
+@pytest.mark.asyncio
+async def test_scanner_preserves_story_spanning_chunk_edge() -> None:
+    first_sentence = "I remember the moment my sister reached for my hand."
+    last_sentence = "Together, we found the courage to walk back inside."
+    story = (
+        f"{first_sentence}\n\n"
+        + "My hands trembled as my sister sat with me and listened. " * 16
+        + f"\n\n{last_sentence}"
+    )
+    source = "preamble " * 700 + story + " conclusion " * 800
+    chunk_bases = SemanticChunker(max_tokens=800).chunk(
+        [DocumentPageBase(page_number=1, extracted_text=source, char_count=len(source))]
+    )
+    story_start = source.index(story)
+    story_end = story_start + len(story)
+    assert any(
+        chunk.char_start < story_start < chunk.char_end < story_end
+        for chunk in chunk_bases
+    )
+    assert any(
+        chunk.char_start <= story_start and chunk.char_end >= story_end
+        for chunk in chunk_bases
+    )
+
+    client, document_id, job_id = source_fixture(source)
+    client.tables["document_chunks"] = [
+        {
+            "id": str(uuid4()),
+            "document_id": document_id,
+            "chunk_index": chunk.chunk_index,
+            "token_count": chunk.token_count,
+            "text": chunk.text,
+            "page_start": chunk.page_start,
+            "page_end": chunk.page_end,
+            "char_start": chunk.char_start,
+            "char_end": chunk.char_end,
+            "created_at": CREATED_AT,
+        }
+        for chunk in chunk_bases
+    ]
+
+    class BoundaryProvider(MockAIProvider):
+        async def complete_structured(
+            self,
+            system_prompt: str,
+            user_prompt: str,
+            response_schema: type[BaseModel],
+            config: AIRequestConfig | None = None,
+        ) -> AIResponse:
+            candidates = []
+            if first_sentence in user_prompt and last_sentence in user_prompt:
+                candidates.append(
+                    CandidateStoryBoundary(
+                        tentative_title="A story across a chunk edge",
+                        first_sentence=first_sentence,
+                        last_sentence=last_sentence,
+                        approx_char_start=user_prompt.index(first_sentence),
+                        approx_char_end=(
+                            user_prompt.index(last_sentence) + len(last_sentence)
+                        ),
+                        evidence_quote=first_sentence,
+                    )
+                )
+            extraction = StoryBoundaryExtractionResponse(
+                has_candidates=bool(candidates),
+                candidates=candidates,
+            )
+            return AIResponse(
+                content=extraction.model_dump_json(),
+                usage=AIUsageStats(provider_name=self.provider_name),
+            )
+
+    scanner = StoryBoundaryScanner(
+        client,
+        AIServiceManager(
+            primary_provider="mock",
+            fallback_providers=[],
+            providers={"mock": BoundaryProvider()},
+        ),
+    )
+
+    result = await scanner.scan_document(document_id, job_id)
+
+    assert result.candidates_created == 1
+    assert client.tables["stories"][0]["original_text"] == story
 
 
 def test_reconciler_reconstructs_non_contiguous_story_without_sidebar() -> None:

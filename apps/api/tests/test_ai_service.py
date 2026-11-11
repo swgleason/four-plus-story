@@ -167,6 +167,47 @@ def test_anthropic_schema_cleaning_removes_unsupported_constraints_recursively()
 
 
 @pytest.mark.asyncio
+async def test_anthropic_retries_oversized_tool_grammar_with_validated_json() -> None:
+    class GrammarTooLargeError(Exception):
+        status_code = 400
+
+    class FakeMessages:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        async def create(self, **kwargs: object) -> SimpleNamespace:
+            self.calls.append(kwargs)
+            if len(self.calls) == 1:
+                raise GrammarTooLargeError("The compiled grammar is too large")
+            return SimpleNamespace(
+                content=[
+                    SimpleNamespace(
+                        type="text",
+                        text='{"has_candidates": false, "candidates": []}',
+                    )
+                ],
+                usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+            )
+
+    provider = AnthropicProvider(api_key="test-key")
+    messages = FakeMessages()
+    provider._client = SimpleNamespace(messages=messages)
+
+    response = await provider.complete_structured(
+        system_prompt="Return a boundary extraction response.",
+        user_prompt="No story here.",
+        response_schema=StoryBoundaryExtractionResponse,
+    )
+
+    assert len(messages.calls) == 2
+    assert "tools" in messages.calls[0]
+    assert "tools" not in messages.calls[1]
+    assert "JSON Schema:" in str(messages.calls[1]["system"])
+    parsed = StoryBoundaryExtractionResponse.model_validate_json(response.content)
+    assert parsed.has_candidates is False
+
+
+@pytest.mark.asyncio
 async def test_manager_uses_primary_provider_without_fallback() -> None:
     manager = AIServiceManager(primary_provider="mock", fallback_providers=[])
     response = await manager.complete_structured(
