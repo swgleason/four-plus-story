@@ -309,6 +309,7 @@ async def test_ingestion_manager_uploads_and_processes_document() -> None:
         filename="story.txt",
         title="A story",
         document_type=DocumentType.TXT_TRANSCRIPT,
+        metadata={"source_url": "https://example.com/transcript", "catalog_id": "abc"},
     )
 
     await manager.process_document(
@@ -320,6 +321,10 @@ async def test_ingestion_manager_uploads_and_processes_document() -> None:
     )
 
     assert client.tables["documents"][0]["page_count"] == 1
+    assert client.tables["documents"][0]["metadata"] == {
+        "source_url": "https://example.com/transcript",
+        "catalog_id": "abc",
+    }
     assert client.tables["processing_jobs"][0]["status"] == "completed"
     assert len(client.tables["document_pages"]) == 1
     assert client.tables["document_chunks"]
@@ -334,11 +339,13 @@ async def test_ingestion_manager_uploads_and_processes_document() -> None:
 def test_upload_endpoint_queues_background_processing() -> None:
     class FakeManager:
         processed: tuple[str, str, bytes, str, DocumentType] | None = None
+        upload_metadata: dict[str, Any] | None = None
 
         def __init__(self) -> None:
             self.parser = DocumentParser()
 
         async def create_upload(self, **kwargs: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+            self.upload_metadata = kwargs.get("metadata")
             return (
                 {"id": "document-1", "title": kwargs["title"]},
                 {"id": "job-1", "status": "pending"},
@@ -363,12 +370,17 @@ def test_upload_endpoint_queues_background_processing() -> None:
     with TestClient(app) as client:
         response = client.post(
             "/api/v1/documents/upload",
-            data={"title": "Transcript", "document_type": "txt_transcript"},
+            data={
+                "title": "Transcript",
+                "document_type": "txt_transcript",
+                "source_url": "https://example.com/story",
+            },
             files={"file": ("story.txt", b"An autobiographical story.", "text/plain")},
         )
 
     assert response.status_code == 202
     assert response.json()["job"]["id"] == "job-1"
+    assert manager.upload_metadata == {"source_url": "https://example.com/story"}
     assert manager.processed == (
         "document-1",
         "job-1",

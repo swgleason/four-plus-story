@@ -60,6 +60,7 @@ async def upload_document(
     title: str = Form(..., min_length=1, max_length=500),
     document_type: DocumentType = Form(...),
     author: str | None = Form(default=None, max_length=500),
+    source_url: str | None = Form(default=None),
     rights_status: DocumentRightsStatus = Form(default=DocumentRightsStatus.RESTRICTED_INTERNAL),
     manager: IngestionManager = Depends(get_ingestion_manager),
     uploader_id: str = Depends(require_curator),
@@ -80,6 +81,11 @@ async def upload_document(
             detail=str(exc),
         ) from exc
 
+    metadata = (
+        {"source_url": source_url.strip()}
+        if source_url and source_url.strip()
+        else None
+    )
     try:
         document, job = await manager.create_upload(
             content=content,
@@ -88,6 +94,7 @@ async def upload_document(
             document_type=document_type,
             author=author.strip() if author else None,
             rights_status=rights_status,
+            metadata=metadata,
             created_by=uploader_id,
         )
     except DuplicateDocumentError as exc:
