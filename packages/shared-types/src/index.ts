@@ -318,7 +318,7 @@ export const StorySchema = z.object({
   original_text: z.string(),
   original_word_count: z.number().int().nonnegative(),
   estimated_spoken_duration_seconds: z.number().int().nonnegative(),
-  length_advisory_exceeds_600_words: z.boolean(),
+  length_advisory_exceeds_800_words: z.boolean(),
   is_autobiographical: z.boolean().nullable().optional(),
   narrator_gender: NarratorGenderEnum.default("unknown"),
   status: StoryStatusEnum,
@@ -420,7 +420,7 @@ export const HybridSearchResultItemSchema = z.object({
   original_text_preview: z.string(),
   original_word_count: z.number().int().nonnegative(),
   estimated_spoken_duration_seconds: z.number().int().nonnegative(),
-  length_advisory_exceeds_600_words: z.boolean(),
+  length_advisory_exceeds_800_words: z.boolean(),
   rrf_score: z.number(),
 });
 export type HybridSearchResultItem = z.infer<typeof HybridSearchResultItemSchema>;
@@ -441,7 +441,7 @@ export const ReviewQueueItemSchema = z.object({
   document_title: z.string(),
   original_word_count: z.number().int().nonnegative(),
   estimated_spoken_duration_seconds: z.number().int().nonnegative(),
-  length_advisory_exceeds_600_words: z.boolean(),
+  length_advisory_exceeds_800_words: z.boolean(),
   is_autobiographical: z.boolean().nullable().optional(),
   narrator_gender: NarratorGenderEnum.default("unknown"),
   overall_classification: FourPlusClassificationEnum,

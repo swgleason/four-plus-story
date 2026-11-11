@@ -12,7 +12,7 @@ type Criterion = { result: string; confidence: number; evidence_quote: string; r
 type Evaluation = { overall_classification: string; overall_confidence: number; criteria_evaluations: Record<string, Criterion>; reasoning_summary: string };
 type CuratedVersion = { id: string; curated_title: string; curated_text: string; editorial_notes: string | null; curated_word_count: number; is_approved: boolean };
 type ReviewData = {
-  story: { id: string; title: string; original_text: string; original_word_count: number; estimated_spoken_duration_seconds: number; length_advisory_exceeds_600_words: boolean; narrator_gender: string; status: string };
+  story: { id: string; title: string; original_text: string; original_word_count: number; estimated_spoken_duration_seconds: number; length_advisory_exceeds_800_words: boolean; narrator_gender: string; status: string };
   document: { title: string; author: string | null; rights_status: string; publication_restrictions: string | null } | null;
   spans: Span[];
   evaluation: Evaluation | null;
@@ -162,7 +162,7 @@ export default function StoryReviewPage() {
             <span>~{Math.ceil(data.story.estimated_spoken_duration_seconds / 60)} min spoken</span>
             <span>Gender: {data.story.narrator_gender || "unknown"}</span>
           </div>
-          {data.story.length_advisory_exceeds_600_words && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Length advisory: this source story exceeds 600 words.</p>}
+          {data.story.length_advisory_exceeds_800_words && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Length advisory: this source story exceeds 800 words.</p>}
         </Card>
 
         <Card>
@@ -220,7 +220,7 @@ export default function StoryReviewPage() {
           <label className="mt-5 block text-sm font-medium">Curated title<input className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5" value={curatedTitle} onChange={(event) => setCuratedTitle(event.target.value)} maxLength={500} /></label>
           <label className="mt-4 block text-sm font-medium">Curated text<textarea className="mt-1 min-h-64 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm leading-6" value={curatedText} onChange={(event) => setCuratedText(event.target.value)} /></label>
           <div className="mt-3 flex flex-wrap justify-between gap-2 rounded-xl bg-sand p-3 text-sm"><span>{wordCount} words</span><span>~{Math.ceil(spokenSeconds / 60)} min ({spokenSeconds} sec) at 140 wpm</span></div>
-          {wordCount > 600 && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Length advisory: curated telling exceeds 600 words.</p>}
+          {wordCount > 800 && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Length advisory: curated telling exceeds 800 words.</p>}
           <label className="mt-4 block text-sm font-medium">Editorial notes<textarea className="mt-1 min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2.5" value={editorialNotes} onChange={(event) => setEditorialNotes(event.target.value)} /></label>
           <button onClick={() => void saveDraft()} disabled={busy || wordCount === 0 || !curatedTitle.trim()} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-forest px-4 py-3 text-sm font-semibold text-forest disabled:opacity-50"><Save size={16} /> Save draft</button>
         </Card>

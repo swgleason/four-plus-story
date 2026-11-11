@@ -45,7 +45,7 @@ class HybridSearchResultItem(BaseModel):
     original_text_preview: str = Field(description="Preview excerpt of story text")
     original_word_count: int = Field(ge=0, description="Story word count")
     estimated_spoken_duration_seconds: int = Field(ge=0, description="Estimated duration")
-    length_advisory_exceeds_600_words: bool = Field(description="True if word count > 600")
+    length_advisory_exceeds_800_words: bool = Field(description="True if word count > 800")
     rrf_score: float = Field(description="Reciprocal Rank Fusion relevance score")
 
 

@@ -80,7 +80,7 @@ gantt
   5. Big 6 emotion classifier + progression tracking.
   6. Somatic sensation analysis with zero-hallucination guardrail (`sensations_missing: true` when absent).
   7. Restored STEP framework extraction (Setting, Trigger, Emotion & Body Sensations, Point).
-  8. Word count and estimated spoken duration calculation with >600 word advisory.
+  8. Word count and estimated spoken duration calculation with >800 word advisory.
 
 ### Phase 4: Storage, Vector Embeddings, & Hybrid Search Engine
 - **Goal**: Implement unhardcoded vector embeddings, full-text search, and hardened RRF retrieval.

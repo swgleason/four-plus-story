@@ -107,7 +107,10 @@ class FakeSupabaseQuery:
                 if self.table_name in {"stories", "processing_jobs"}:
                     row.setdefault("updated_at", now)
                 if self.table_name == "stories":
-                    row.setdefault("length_advisory_exceeds_600_words", False)
+                    row.setdefault(
+                        "length_advisory_exceeds_800_words",
+                        row.get("original_word_count", 0) > 800,
+                    )
                 rows.append(row)
                 saved.append(row)
             data: Any = saved[0] if self.single_row else saved
@@ -401,7 +404,7 @@ async def test_scanner_preserves_story_spanning_chunk_edge() -> None:
         + "My hands trembled as my sister sat with me and listened. " * 16
         + f"\n\n{last_sentence}"
     )
-    source = "preamble " * 700 + story + " conclusion " * 800
+    source = "preamble. " * 550 + story + " conclusion " * 800
     chunk_bases = SemanticChunker(max_tokens=800).chunk(
         [DocumentPageBase(page_number=1, extracted_text=source, char_count=len(source))]
     )
@@ -440,6 +443,7 @@ async def test_scanner_preserves_story_spanning_chunk_edge() -> None:
             user_prompt: str,
             response_schema: type[BaseModel],
             config: AIRequestConfig | None = None,
+            **_kwargs: Any,
         ) -> AIResponse:
             candidates = []
             if first_sentence in user_prompt and last_sentence in user_prompt:
@@ -477,6 +481,68 @@ async def test_scanner_preserves_story_spanning_chunk_edge() -> None:
 
     assert result.candidates_created == 1
     assert client.tables["stories"][0]["original_text"] == story
+
+
+@pytest.mark.asyncio
+async def test_scanner_drops_overlong_and_incomplete_candidates() -> None:
+    scenarios = [
+        (
+            "I remember this moment. "
+            + "My hands trembled while I waited. " * 400
+            + "We found peace together.",
+            "I remember this moment.",
+            "We found peace together.",
+        ),
+        (
+            "I remember the difficult day. My hands trembled at the door",
+            "I remember the difficult day.",
+            "My hands trembled at the door",
+        ),
+    ]
+
+    for story_text, first_sentence, last_sentence in scenarios:
+        source = f"An introduction. {story_text} A later sentence."
+        client, document_id, job_id = source_fixture(source)
+
+        class CandidateProvider(MockAIProvider):
+            async def complete_structured(
+                self,
+                system_prompt: str,
+                user_prompt: str,
+                response_schema: type[BaseModel],
+                config: AIRequestConfig | None = None,
+            ) -> AIResponse:
+                candidate = CandidateStoryBoundary(
+                    tentative_title="Candidate",
+                    first_sentence=first_sentence,
+                    last_sentence=last_sentence,
+                    approx_char_start=user_prompt.index(first_sentence),
+                    approx_char_end=user_prompt.index(last_sentence) + len(last_sentence),
+                    evidence_quote=first_sentence,
+                )
+                extraction = StoryBoundaryExtractionResponse(
+                    has_candidates=True,
+                    candidates=[candidate],
+                )
+                return AIResponse(
+                    content=extraction.model_dump_json(),
+                    usage=AIUsageStats(provider_name=self.provider_name),
+                )
+
+        scanner = StoryBoundaryScanner(
+            client,
+            AIServiceManager(
+                primary_provider="mock",
+                fallback_providers=[],
+                providers={"mock": CandidateProvider()},
+            ),
+        )
+
+        result = await scanner.scan_document(document_id, job_id)
+
+        assert result.candidates_rejected == 1
+        assert result.candidates_created == 0
+        assert client.tables.get("stories", []) == []
 
 
 def test_reconciler_reconstructs_non_contiguous_story_without_sidebar() -> None:

@@ -198,8 +198,8 @@ class FakeRPC:
                 "original_text": row["original_text"],
                 "original_word_count": row["original_word_count"],
                 "estimated_spoken_duration_seconds": row["estimated_spoken_duration_seconds"],
-                "length_advisory_exceeds_600_words": row[
-                    "length_advisory_exceeds_600_words"
+                "length_advisory_exceeds_800_words": row[
+                    "length_advisory_exceeds_800_words"
                 ],
                 "sparse_rank": sparse_rank.get(row["story_id"]),
                 "dense_rank": dense_rank.get(row["story_id"]),
@@ -257,7 +257,7 @@ def _search_row(
         "original_text": "The original exact story source.",
         "original_word_count": 6,
         "estimated_spoken_duration_seconds": 3,
-        "length_advisory_exceeds_600_words": False,
+        "length_advisory_exceeds_800_words": False,
         "status": status,
         "visibility": visibility,
         "rights_status": rights_status,

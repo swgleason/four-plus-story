@@ -65,7 +65,7 @@ class ReviewQueueItem(BaseModel):
     document_title: str
     original_word_count: int = Field(ge=0)
     estimated_spoken_duration_seconds: int = Field(ge=0)
-    length_advisory_exceeds_600_words: bool
+    length_advisory_exceeds_800_words: bool
     is_autobiographical: Optional[bool] = None
     narrator_gender: NarratorGender = NarratorGender.UNKNOWN
     overall_classification: FourPlusClassification

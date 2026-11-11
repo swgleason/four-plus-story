@@ -262,7 +262,7 @@ CREATE TABLE IF NOT EXISTS stories (
     original_text TEXT NOT NULL,
     original_word_count INTEGER NOT NULL,
     estimated_spoken_duration_seconds INTEGER NOT NULL,
-    length_advisory_exceeds_600_words BOOLEAN GENERATED ALWAYS AS (original_word_count > 600) STORED,
+    length_advisory_exceeds_800_words BOOLEAN GENERATED ALWAYS AS (original_word_count > 800) STORED,
     is_autobiographical BOOLEAN,
     status story_status NOT NULL DEFAULT 'discovered_pending_review',
     visibility story_visibility NOT NULL DEFAULT 'internal_only',
@@ -279,7 +279,7 @@ CREATE TABLE IF NOT EXISTS stories (
 CREATE INDEX IF NOT EXISTS idx_stories_status ON stories(status);
 CREATE INDEX IF NOT EXISTS idx_stories_visibility ON stories(visibility);
 CREATE INDEX IF NOT EXISTS idx_stories_document_id ON stories(document_id);
-CREATE INDEX IF NOT EXISTS idx_stories_length_advisory ON stories(length_advisory_exceeds_600_words);
+CREATE INDEX IF NOT EXISTS idx_stories_length_advisory ON stories(length_advisory_exceeds_800_words);
 CREATE INDEX IF NOT EXISTS idx_stories_tsv_search ON stories USING GIN(tsv_search);
 
 -- 3.8. story_source_spans (Multi-span tracking)
@@ -546,7 +546,7 @@ RETURNS TABLE (
     original_text TEXT,
     original_word_count INT,
     estimated_spoken_duration_seconds INT,
-    length_advisory_exceeds_600_words BOOLEAN,
+    length_advisory_exceeds_800_words BOOLEAN,
     sparse_rank BIGINT,
     dense_rank BIGINT,
     rrf_score FLOAT
@@ -607,7 +607,7 @@ BEGIN
         s.original_text,
         s.original_word_count,
         s.estimated_spoken_duration_seconds,
-        s.length_advisory_exceeds_600_words,
+        s.length_advisory_exceeds_800_words,
         sr.rank AS sparse_rank,
         dr.rank AS dense_rank,
         (

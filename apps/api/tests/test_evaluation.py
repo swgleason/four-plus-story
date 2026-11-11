@@ -104,7 +104,10 @@ class FakeSupabaseQuery:
                 }:
                     row.setdefault("updated_at", now)
                 if self.table_name == "stories":
-                    row.setdefault("length_advisory_exceeds_600_words", False)
+                    row.setdefault(
+                        "length_advisory_exceeds_800_words",
+                        row.get("original_word_count", 0) > 800,
+                    )
                 rows.append(row)
                 inserted.append(row)
             return SimpleNamespace(data=inserted[0] if self.single_row else inserted)
@@ -207,7 +210,7 @@ def make_story(client: FakeSupabase) -> StoryInDB:
             "original_text": SOURCE_TEXT,
             "original_word_count": len(SOURCE_TEXT.split()),
             "estimated_spoken_duration_seconds": 200,
-            "length_advisory_exceeds_600_words": False,
+            "length_advisory_exceeds_800_words": False,
             "is_autobiographical": None,
             "narrator_gender": "unknown",
             "status": StoryStatus.DISCOVERED_PENDING_REVIEW.value,

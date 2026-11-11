@@ -12,7 +12,7 @@ type Item = {
     title: string;
     original_word_count: number;
     estimated_spoken_duration_seconds: number;
-    length_advisory_exceeds_600_words: boolean;
+    length_advisory_exceeds_800_words: boolean;
     narrator_gender?: string;
   };
   document: { title: string; author: string | null; rights_status: string; publication_restrictions: string | null } | null;
@@ -45,7 +45,7 @@ export default function ReviewQueuePage() {
           <Metric label="Spoken time" value={`${Math.ceil(item.story.estimated_spoken_duration_seconds / 60)} min`} />
           <Metric label="Evaluation" value={item.evaluation ? `${Math.round(item.evaluation.overall_confidence * 100)}%` : "Pending"} />
         </div>
-        {item.story.length_advisory_exceeds_600_words && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Long story advisory: original exceeds 600 words.</p>}
+        {item.story.length_advisory_exceeds_800_words && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Long story advisory: original exceeds 800 words.</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Rights</span><StatusPill value={item.document?.rights_status || "unknown"} />
           {item.evaluation && <span className="ml-auto text-xs text-slate-600">{titleCase(item.evaluation.overall_classification)}</span>}

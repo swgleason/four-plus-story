@@ -26,7 +26,7 @@ graph TD
     RawChunk --> D4["4. Story Variant Assignments<br/>(Zero, one, or multiple variants with evidence)"]
     RawChunk --> D5["5. Emotion & Somatic Classification<br/>(Big 6 + Positive Emotions, Somatic Sensations, Progression)"]
     RawChunk --> D6["6. STEP Analysis<br/>(Setting, Trigger, Emotion & Sensations, Point)"]
-    RawChunk --> D7["7. Storytelling Quality & Length<br/>(Word count, Spoken duration, >600w advisory)"]
+    RawChunk --> D7["7. Storytelling Quality & Length<br/>(Word count, Spoken duration, >800w advisory)"]
     RawChunk --> D8["8. Narrator Gender<br/>(male, female, unknown; evidence-based)"]
 ```
 
@@ -197,7 +197,9 @@ These fields may be captured as supplementary analysis, but must NEVER replace S
   - `estimated_spoken_duration_seconds`: Calculated at ~140 words per minute ($duration = \frac{words}{140} \times 60$).
 - **Story-Length Advisory**:
   - A 4+ story is ideally ~2 minutes long (~260–300 words).
-  - Any story exceeding 600 words receives `length_advisory_exceeds_600_words: true`.
+  - Any story exceeding 800 words receives `length_advisory_exceeds_800_words: true`.
+  - Discovery rejects candidates over 800 words and candidates whose source boundaries indicate
+    an incomplete sentence; rejected fragments are not added to the review queue.
 - **Curated Telling Version**:
   - The AI may propose a streamlined version optimized for oral telling.
   - The curated version NEVER overwrites the original text.

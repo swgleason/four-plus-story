@@ -106,7 +106,7 @@ Phase 7: Hardening & Launch    [                    ]   0% PENDING
 - [x] Add one-time invitation-token acceptance for curator and super-admin roles.
 - [x] Build document upload, processing-job status, and event-log dashboards.
 - [x] Add a multi-span review queue with AI criteria, emotion/somatic, variants, and STEP details.
-- [x] Add separate curated draft editing with live word count, 140 wpm estimate, and >600-word advisory.
+- [x] Add separate curated draft editing with live word count, 140 wpm estimate, and >800-word advisory.
 - [x] Add curator approval/rejection/revision controls with rights-gated visibility and audit records.
 - [ ] Run browser-based end-to-end testing against configured Supabase and API deployments.
 
@@ -120,7 +120,7 @@ The following domain-specific questions are identified for confirmation with Lif
 |---|---|---|---|
 | **DQ-01** | **Precise Emotion Definitions & Categorization** | High-energy: Fear, Anger. Low-energy: Sadness, Shame, Disgust, Hopeless Despair. Connective: Joy, Gratitude, Peace. | Need confirmation against primary Thrive Today / Life Model curriculum materials to ensure exact taxonomy alignment. |
 | **DQ-02** | **Detailed Rubric Criteria for Variants 2 & 3** | Variant 2 (*Acting Like Myself*) focuses on identity under pressure; Variant 3 (*Godsight / Immanuel*) focuses on experiential awareness of God's presence. | Need authoritative reference texts to fine-tune AI boundary prompts for edge cases. |
-| **DQ-03** | **Spoken Narration Conversion Ratio** | Standard 140 words per minute (range 130–150 wpm). A 2-minute story is ~280 words; length advisory triggers at >600 words (~4.3 minutes). | Stakeholder confirmation on whether church/small group settings prefer a tighter length advisory (e.g. >500 words). |
+| **DQ-03** | **Spoken Narration Conversion Ratio** | Standard 140 words per minute (range 130–150 wpm). A 2-minute story is ~280 words; length advisory triggers at >800 words (~5.7 minutes). | Stakeholder confirmation on whether church/small group settings prefer a tighter length advisory (e.g. >500 words). |
 | **DQ-04** | **Curated Telling Version Permissions** | Curated versions require curator approval before public availability. | Determine if the original author/speaker must also review curated adaptations when available. |
 
 ---

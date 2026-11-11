@@ -104,8 +104,8 @@ BEGIN
     );
 
     RETURN v_new_state || JSONB_BUILD_OBJECT(
-        'length_advisory_exceeds_600_words',
-        v_word_count > 600
+        'length_advisory_exceeds_800_words',
+        v_word_count > 800
     );
 END;
 $$;

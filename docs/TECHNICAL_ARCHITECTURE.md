@@ -128,7 +128,7 @@ classDiagram
         +String original_text
         +Integer original_word_count
         +Integer estimated_spoken_duration_seconds
-        +Boolean length_advisory_exceeds_600_words
+        +Boolean length_advisory_exceeds_800_words
         +Boolean is_autobiographical
         +StoryStatus status
         +StoryVisibility visibility

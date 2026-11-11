@@ -212,7 +212,7 @@ Perform hybrid search across approved stories (satisfying approval, visibility, 
         "original_text_preview": "As I stood outside the hospital room, a sickening wave of nausea hit me...",
         "original_word_count": 284,
         "estimated_spoken_duration_seconds": 121,
-        "length_advisory_exceeds_600_words": false,
+        "length_advisory_exceeds_800_words": false,
         "rrf_score": 0.03125
       }
     ]
@@ -230,7 +230,7 @@ Retrieve a single approved story with full original text, source spans, variants
     "original_text": "As I stood outside the hospital room, a sickening wave of nausea hit me. My hands were shaking so hard I dropped my keys on the linoleum floor...",
     "original_word_count": 284,
     "estimated_spoken_duration_seconds": 121,
-    "length_advisory_exceeds_600_words": false,
+    "length_advisory_exceeds_800_words": false,
     "is_autobiographical": true,
     "source_reference": {
       "document_id": "7f8b9e12-3456-4abc-9def-0123456789ab",

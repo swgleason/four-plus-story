@@ -4,7 +4,7 @@ Pydantic v2 Schemas for Core Stories, Multi-Span Sources, and Curated Versions.
 Domain Invariants:
 1. Complete original text is preserved and immutable.
 2. Multiple spans supported for page breaks / sidebars.
-3. Word count (>600 word advisory) and spoken duration (~140 wpm).
+3. Word count (>800 word advisory) and spoken duration (~140 wpm).
 4. Separate curated telling versions stored independently.
 5. Publication requires status='approved', visibility='public', and document clearance.
 """
@@ -96,9 +96,9 @@ class StoryBase(BaseModel):
         ge=0,
         description="Spoken duration in seconds (~140 wpm)"
     )
-    length_advisory_exceeds_600_words: bool = Field(
+    length_advisory_exceeds_800_words: bool = Field(
         default=False,
-        description="Flagged true if original_word_count > 600 words"
+        description="Flagged true if original_word_count > 800 words"
     )
     is_autobiographical: Optional[bool] = Field(
         default=None,

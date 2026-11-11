@@ -126,8 +126,8 @@ class HybridSearchEngine:
                     estimated_spoken_duration_seconds=row[
                         "estimated_spoken_duration_seconds"
                     ],
-                    length_advisory_exceeds_600_words=row[
-                        "length_advisory_exceeds_600_words"
+                    length_advisory_exceeds_800_words=row[
+                        "length_advisory_exceeds_800_words"
                     ],
                     rrf_score=row["rrf_score"],
                 )

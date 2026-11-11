@@ -281,7 +281,7 @@ CREATE TABLE stories (
     original_text TEXT NOT NULL, -- Verbatim text retrieved from verified page boundaries
     original_word_count INTEGER NOT NULL,
     estimated_spoken_duration_seconds INTEGER NOT NULL, -- e.g. (word_count / 140) * 60
-    length_advisory_exceeds_600_words BOOLEAN GENERATED ALWAYS AS (original_word_count > 600) STORED,
+    length_advisory_exceeds_800_words BOOLEAN GENERATED ALWAYS AS (original_word_count > 800) STORED,
     is_autobiographical BOOLEAN,
     narrator_gender narrator_gender NOT NULL DEFAULT 'unknown',
     status story_status NOT NULL DEFAULT 'discovered_pending_review',
@@ -300,7 +300,7 @@ CREATE INDEX idx_stories_status ON stories(status);
 CREATE INDEX idx_stories_visibility ON stories(visibility);
 CREATE INDEX idx_stories_narrator_gender ON stories(narrator_gender);
 CREATE INDEX idx_stories_document_id ON stories(document_id);
-CREATE INDEX idx_stories_length_advisory ON stories(length_advisory_exceeds_600_words);
+CREATE INDEX idx_stories_length_advisory ON stories(length_advisory_exceeds_800_words);
 CREATE INDEX idx_stories_tsv_search ON stories USING GIN(tsv_search);
 
 -- Source spans preserving exact multi-page / non-contiguous story text

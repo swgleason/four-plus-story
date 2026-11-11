@@ -24,7 +24,7 @@ Crucially, the system enforces a strict **human-in-the-loop** architecture: no A
 - **Strictly Separated Classification Dimensions**: Independently tracks autobiographical involvement, overall 4+ classification, criteria determinations, multiple story variants, structured emotion progressions, somatic sensations, and STEP components.
 - **Restored STEP Framework**: Captures **Setting, Trigger, Emotion & Body Sensations, and Point**, with missing data recorded explicitly as missing.
 - **Big 6 Emotion & Somatic Rigor**: Tracks high-energy (Fear, Anger) and low-energy (Sadness, Shame, Disgust, Hopeless Despair) emotions plus connective states (Joy, Gratitude, Peace) with physical somatic markers (tight chest, racing heart, knot in stomach, tears) and zero hallucinated sensations.
-- **Original & Curated Telling Versions**: Stores pristine original text with word counts and spoken duration metrics, provides length advisories for stories > 600 words, and supports separate human-approved curated telling versions.
+- **Original & Curated Telling Versions**: Stores pristine original text with word counts and spoken duration metrics, provides length advisories for stories > 800 words, and supports separate human-approved curated telling versions.
 - **Curator Review Workbench**: A web portal for administrators to compare AI analysis with the source text, verify source spans, make human corrections, and authorize publication.
 - **Multi-Tier Public & Community Mobile Application**: Allows church communities and individual seekers to discover stories through hybrid search (by emotion, variant, or scripture) while respecting granular visibility and copyright controls.
 
@@ -83,7 +83,7 @@ flowchart LR
 7. **Restored STEP Framework**:
    - **Setting, Trigger, Emotion & Body Sensations, Point**.
 8. **Spoken Story Length Standards**:
-   - Stories capture word counts and estimated spoken durations. Stories exceeding 600 words receive an explicit length advisory. Curated telling versions require human approval before release.
+   - Stories capture word counts and estimated spoken durations. Stories exceeding 800 words receive an explicit length advisory. Curated telling versions require human approval before release.
 9. **Agnostic AI Integration**: The backend business logic depends on abstract AI interfaces, allowing seamless switching or fallbacks between LLM providers (Anthropic, OpenAI, Gemini, local models) without changing application code.
 10. **Unified Monorepo Workflow**: Code sharing, unified TypeScript/Zod schemas, and synchronized deployments managed via pnpm workspaces and Turborepo.
 

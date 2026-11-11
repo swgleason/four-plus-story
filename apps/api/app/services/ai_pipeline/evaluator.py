@@ -278,8 +278,9 @@ class StoryEvaluator:
                 )
             return
 
+        normalized_source = StoryEvaluator._normalize_quote_for_comparison(source_text)
         quote_tokens = StoryEvaluator._significant_evidence_tokens(normalized_quote)
-        source_tokens = StoryEvaluator._significant_evidence_tokens(source_text)
+        source_tokens = StoryEvaluator._significant_evidence_tokens(normalized_source)
         if not quote_tokens:
             if required:
                 raise ValueError(

@@ -14,7 +14,7 @@
 | **PR-08** | Story Variants | Authoritative 4 variants: Return to Joy, Acting Like Myself, Godsight/Immanuel, Joy-Spreading | P0 | AI Engine / API |
 | **PR-09** | Emotion & Somatics | Big 6 emotions (high/low energy) + positive emotions, progressions, and strict somatic analysis | P0 | AI Engine / API |
 | **PR-10** | STEP Analysis | Restored STEP framework: Setting, Trigger, Emotion & Body Sensations, Point | P0 | AI Engine / Mobile / Admin |
-| **PR-11** | Story Length & Curation | Word count, spoken duration, >600 word advisory, and separate human-approved curated versions | P0 | Database / Admin / Mobile |
+| **PR-11** | Story Length & Curation | Word count, spoken duration, >800 word advisory, and separate human-approved curated versions | P0 | Database / Admin / Mobile |
 | **PR-12** | Natural Language Search | Hybrid search across original and curated text, emotions, variants, and STEP components | P0 | API / Mobile App |
 
 ---
@@ -121,7 +121,7 @@
 - **Description**: Authentic oral storytelling requires manageable length. The system tracks metrics, flags overly long stories, and manages curated telling versions.
 - **Acceptance Criteria**:
   1. Tracks `original_word_count` and `estimated_spoken_duration_seconds` (calculated at ~140 words per minute).
-  2. Automatically flags `length_advisory_exceeds_600_words = TRUE` when word count exceeds 600 words (~4 minutes spoken).
+  2. Automatically flags `length_advisory_exceeds_800_words = TRUE` when word count exceeds 800 words (~5.7 minutes spoken).
   3. Supports separate `story_curated_versions` storing streamlined, spoken-friendly adaptations.
   4. The AI may propose a curated telling, but it MUST NOT overwrite the original text.
   5. A curated version requires explicit human approval before becoming available for reading or sharing.
@@ -146,4 +146,4 @@
 | **Data Integrity** | Cascade protection on source documents | Zero accidental deletions of documents or pages |
 | **Security & Privacy** | Search path protection & RLS verification | 100% of tables protected by RLS; explicit search paths on all SECURITY DEFINER functions |
 | **Accessibility** | Mobile & Web UI compliance | WCAG 2.1 Level AA |
-| **Spoken Story Standards** | Story length advisory | Flag applied to all stories > 600 words |
+| **Spoken Story Standards** | Story length advisory | Flag applied to all stories > 800 words |

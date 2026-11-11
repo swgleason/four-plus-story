@@ -179,7 +179,7 @@ class FakeRPC:
             "curated_spoken_duration_seconds": (word_count * 60 + 139) // 140,
             "editorial_notes": self.params["p_editorial_notes"],
             "is_approved": False,
-            "length_advisory_exceeds_600_words": word_count > 600,
+            "length_advisory_exceeds_800_words": word_count > 800,
         }
         self.client.tables.setdefault("story_curated_versions", []).append(version)
         self.client.tables.setdefault("story_human_reviews", []).append(
@@ -346,7 +346,7 @@ def test_curated_draft_metrics_are_computed_and_left_unapproved() -> None:
     story_id = str(uuid4())
     body = {
         "curated_title": "A telling",
-        "curated_text": " ".join(["word"] * 601),
+        "curated_text": " ".join(["word"] * 801),
         "editorial_notes": "Trim before sharing",
     }
     tables: dict[str, list[dict[str, Any]]] = {
@@ -357,8 +357,8 @@ def test_curated_draft_metrics_are_computed_and_left_unapproved() -> None:
         response = client.post(f"/api/v1/admin/stories/{story_id}/curated", json=body)
 
     assert response.status_code == 200
-    assert response.json()["curated_word_count"] == 601
-    assert response.json()["curated_spoken_duration_seconds"] == 258
-    assert response.json()["length_advisory_exceeds_600_words"] is True
+    assert response.json()["curated_word_count"] == 801
+    assert response.json()["curated_spoken_duration_seconds"] == 344
+    assert response.json()["length_advisory_exceeds_800_words"] is True
     assert response.json()["is_approved"] is False
     assert tables["story_human_reviews"][0]["action"] == "curate_version"

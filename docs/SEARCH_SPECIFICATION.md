@@ -142,7 +142,7 @@ RETURNS TABLE (
     original_text TEXT,
     original_word_count INT,
     estimated_spoken_duration_seconds INT,
-    length_advisory_exceeds_600_words BOOLEAN,
+    length_advisory_exceeds_800_words BOOLEAN,
     sparse_rank BIGINT,
     dense_rank BIGINT,
     rrf_score FLOAT
@@ -203,7 +203,7 @@ BEGIN
         s.original_text,
         s.original_word_count,
         s.estimated_spoken_duration_seconds,
-        s.length_advisory_exceeds_600_words,
+        s.length_advisory_exceeds_800_words,
         sr.rank AS sparse_rank,
         dr.rank AS dense_rank,
         (

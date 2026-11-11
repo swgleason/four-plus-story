@@ -105,6 +105,39 @@ def test_chunker_defaults_to_300_token_overlap() -> None:
     assert SemanticChunker().overlap_tokens == 300
 
 
+def test_scanner_rejects_overlong_and_incomplete_story_boundaries() -> None:
+    from app.services.ai_pipeline.scanner import StoryBoundaryScanner
+
+    source = "A preceding sentence. A complete sentence."
+    start = source.index("A complete")
+    assert StoryBoundaryScanner._is_complete_candidate(
+        "A complete sentence.",
+        source,
+        start,
+    )
+    assert not StoryBoundaryScanner._is_complete_candidate(
+        "An incomplete sentence",
+        "An incomplete sentence",
+        0,
+    )
+    exactly_eight_hundred_words = " ".join(["word"] * 799 + ["word."])
+    assert StoryBoundaryScanner._is_complete_candidate(
+        exactly_eight_hundred_words,
+        exactly_eight_hundred_words,
+        0,
+    )
+    assert not StoryBoundaryScanner._is_complete_candidate(
+        "A story. " * 801,
+        "A story. " * 801,
+        0,
+    )
+    assert not StoryBoundaryScanner._is_complete_candidate(
+        "clipped text.",
+        "A sentence that was clipped text.",
+        len("A sentence that was "),
+    )
+
+
 def test_chunker_handles_unicode_without_invalid_offsets() -> None:
     page = DocumentPageBase(
         page_number=1,

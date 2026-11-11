@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Sequence
 from typing import Any
 from uuid import uuid4
@@ -23,6 +24,8 @@ from app.services.ai_pipeline.prompts import BOUNDARY_SYSTEM_PROMPT
 from app.services.ai_pipeline.reconciler import BoundaryReconciler, VerifiedStoryBoundary
 
 logger = logging.getLogger(__name__)
+
+MAX_DISCOVERED_STORY_WORDS = 800
 
 
 class StoryBoundaryScanResult(BaseModel):
@@ -104,7 +107,11 @@ class StoryBoundaryScanner:
 
                 for candidate in extraction.candidates:
                     verified = self.reconciler.reconcile(candidate, chunk, pages, chunks)
-                    if verified is None:
+                    if verified is None or not self._is_complete_candidate(
+                        verified.text,
+                        document_text,
+                        verified.document_char_start,
+                    ):
                         candidates_rejected += 1
                         continue
                     boundary_key = (
@@ -173,6 +180,23 @@ class StoryBoundaryScanner:
             raise
         finally:
             await self.ai_manager.close()
+
+    @staticmethod
+    def _is_complete_candidate(text: str, source_text: str, start_offset: int) -> bool:
+        words = text.split()
+        preceding_source = source_text[:start_offset]
+        preceding_text = preceding_source.rstrip()
+        starts_at_boundary = (
+            not preceding_text
+            or preceding_source.endswith("\n\n")
+            or re.search(r"""[.!?…]["'”’)\]]*$""", preceding_text) is not None
+        )
+        return bool(
+            words
+            and len(words) <= MAX_DISCOVERED_STORY_WORDS
+            and re.search(r"""[.!?…]["'”’)\]]*\s*$""", text)
+            and starts_at_boundary
+        )
 
     async def _fetch_pages(self, document_id: str) -> list[DocumentPageInDB]:
         rows = await self._fetch_all_rows("document_pages", document_id, "page_number")
